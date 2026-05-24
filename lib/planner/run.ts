@@ -2,6 +2,12 @@ import Anthropic from '@anthropic-ai/sdk';
 import { getSecret, isMockMode } from '../core/secrets';
 import { ShotPlanSchema, type ShotPlan, type PlannedShot, type PlannerInput } from './types';
 
+export interface PlannerAvatarInfo {
+  default_voice_id?: string;
+}
+
+export type PlannerOpts = PlannerInput & { avatar?: PlannerAvatarInfo | null };
+
 const SYSTEM_PROMPT = `You are a video shot planner for social media reels.
 
 Input: a guion (script in Spanish or English), format (9:16/16:9/1:1), mode hint (auto/avatar/broll-only/mixed), optional avatarId.
@@ -29,8 +35,16 @@ Rules:
 - broll_prompt_en is null when type='avatar'
 - Total duration close to natural speech length (~15 chars/sec)`;
 
-export async function planShots(opts: PlannerInput): Promise<ShotPlan> {
-  if (isMockMode()) return deterministicPlan(opts);
+export async function planShots(opts: PlannerOpts): Promise<ShotPlan> {
+  const nativeVoiceId = opts.avatar?.default_voice_id;
+  if (isMockMode()) {
+    const plan = deterministicPlan(opts);
+    if (nativeVoiceId) {
+      plan.voice_id = nativeVoiceId;
+      plan.voice_source = 'native';
+    }
+    return plan;
+  }
   const key = getSecret('ANTHROPIC_API_KEY');
   if (!key) throw new Error('ANTHROPIC_API_KEY not set');
   const client = new Anthropic({ apiKey: key });
@@ -46,7 +60,12 @@ export async function planShots(opts: PlannerInput): Promise<ShotPlan> {
     .join('');
   const m = text.match(/\{[\s\S]*\}/);
   if (!m) throw new Error('No JSON in planner response');
-  return ShotPlanSchema.parse(JSON.parse(m[0]));
+  const plan = ShotPlanSchema.parse(JSON.parse(m[0]));
+  if (nativeVoiceId && !plan.voice_id) {
+    plan.voice_id = nativeVoiceId;
+    plan.voice_source = 'native';
+  }
+  return plan;
 }
 
 function deterministicPlan(opts: { guion: string; format: string }): ShotPlan {

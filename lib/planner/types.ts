@@ -16,6 +16,9 @@ export const ShotPlanSchema = z.object({
   total_duration_sec: z.number(),
   estimated_cost_usd: z.number(),
   rationale: z.string(),
+  // Plan-level voice id (from the chosen avatar's default_voice_id, when set).
+  voice_id: z.string().optional(),
+  voice_source: z.enum(['native', 'custom']).optional(),
 });
 export type ShotPlan = z.infer<typeof ShotPlanSchema>;
 

@@ -98,6 +98,11 @@ export const ScriptSchema = z.object({
   duration_target: z.number(),
   language: z.string().default('es-AR'),
   shots: z.array(ShotSchema),
+  // Optional per-video voice override. Set by the planner when the chosen
+  // avatar has a `default_voice_id` and the user picked the native voice mode.
+  // Falls back to ELEVENLABS_VOICE_ID at render time when absent.
+  voice_id: z.string().optional(),
+  voice_source: z.enum(['native', 'custom']).optional(),
 });
 export type Script = z.infer<typeof ScriptSchema>;
 

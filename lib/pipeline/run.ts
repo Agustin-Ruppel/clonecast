@@ -60,11 +60,15 @@ export async function runPipeline(opts: {
     job.steps.audio.status = 'running';
     await saveJobState(job);
     const audioPaths: string[] = [];
+    // Voice priority: script.voice_id (set by planner from avatar's native voice)
+    // → ELEVENLABS_VOICE_ID env override → 'mock'. This lets users skip
+    // ElevenLabs entirely when their HeyGen avatar already ships with a voice.
+    const voiceId = script.voice_id ?? process.env.ELEVENLABS_VOICE_ID ?? 'mock';
     for (let i = 0; i < script.shots.length; i++) {
       const shot = script.shots[i]!;
       if (!shot.text) { audioPaths.push(''); continue; }
       const p = path.join(tmpDir, `audio-${i}.mp3`);
-      await synthesize({ text: shot.text, voiceId: process.env.ELEVENLABS_VOICE_ID || 'mock', outputPath: p });
+      await synthesize({ text: shot.text, voiceId, outputPath: p });
       audioPaths.push(p);
       opts.onProgress('audio', ((i + 1) / script.shots.length) * 100);
     }
@@ -85,7 +89,7 @@ export async function runPipeline(opts: {
         const dims = aspect === '9:16' ? { width: 1080, height: 1920 } : { width: 1920, height: 1080 };
         const job = await createAvatarVideo({
           avatarId: process.env.HEYGEN_AVATAR_ID || 'mock',
-          voiceId: process.env.ELEVENLABS_VOICE_ID || 'mock',
+          voiceId,
           text: shot.text!,
           dimensions: dims,
         });

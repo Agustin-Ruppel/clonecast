@@ -26,6 +26,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <nav className="flex items-center gap-1">
                 <Link href="/" className="btn-ghost">Dashboard</Link>
                 <Link href="/generate" className="btn-ghost">Generate</Link>
+                <Link href="/generate-v2" className="btn-ghost flex items-center gap-1.5">
+                  Generate v2
+                  <span className="pill !text-[10px] !px-1.5 !py-0 bg-accent-500/15 text-accent-400 border-accent-500/30">beta</span>
+                </Link>
                 <Link href="/library" className="btn-ghost">Library</Link>
                 <Link href="/settings" className="btn-ghost">Settings</Link>
                 <Link href="/setup" className="btn-secondary ml-2">Setup</Link>

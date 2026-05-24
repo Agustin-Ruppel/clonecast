@@ -4,6 +4,7 @@ import { getSecret, isMockMode } from './secrets';
 import { ProviderKeys } from '../types';
 import type { JobState } from '../types';
 import { runMigrations } from '../db/migrations';
+import { migrateLegacyState } from '../db/migrate-from-json';
 import * as jobsRepo from '../db/repos/jobs';
 
 const STATE_DIR = path.join(process.cwd(), 'state');
@@ -13,6 +14,7 @@ let _migrated = false;
 async function ensureMigrated(): Promise<void> {
   if (_migrated) return;
   await runMigrations();
+  await migrateLegacyState(STATE_DIR);
   _migrated = true;
 }
 

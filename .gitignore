@@ -24,6 +24,7 @@ outputs/*
 !outputs/.gitkeep
 state/*
 !state/.gitkeep
+state.migrated/
 tmp/*
 !tmp/.gitkeep
 *.mp4

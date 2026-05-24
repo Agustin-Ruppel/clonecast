@@ -5,7 +5,8 @@ import type { WordTimestamp } from '../providers/openai';
 import { saveJobState } from '../core/state';
 import { isMockMode } from '../core/secrets';
 import { getStorage } from '../storage';
-import type { JobState, CreatorProfile } from '../types';
+import type { JobState, CreatorProfile, BrandPack } from '../types';
+import { mergeBrand } from './brand-merge';
 
 import type { Script } from '../types';
 
@@ -15,6 +16,7 @@ export async function runPipeline(opts: {
   mode: 'class' | 'reel-avatar' | 'reel-broll';
   duration: number;
   profile: CreatorProfile | null;
+  brandOverride?: Partial<BrandPack> | null;
   onProgress: (step: string, progress: number, message?: string) => void;
 }): Promise<JobState> {
   const id = `video-${Date.now()}`;
@@ -127,8 +129,9 @@ export async function runPipeline(opts: {
     job.steps.compose.status = 'running';
     await saveJobState(job);
     const brandPath = path.join(process.cwd(), 'assets', 'brand', 'brand.json');
-    const brand = (await fs.pathExists(brandPath)) ? await fs.readJson(brandPath) : null;
-    const htmlPath = await composeHTML({ script, audioPaths, videoPaths, captions, outputDir: tmpDir, brand });
+    const diskBrand = (await fs.pathExists(brandPath)) ? ((await fs.readJson(brandPath)) as BrandPack) : null;
+    const finalBrand = mergeBrand(diskBrand, opts.brandOverride ?? null);
+    const htmlPath = await composeHTML({ script, audioPaths, videoPaths, captions, outputDir: tmpDir, brand: finalBrand });
     job.steps.compose = { status: 'done' };
     opts.onProgress('compose', 100);
 

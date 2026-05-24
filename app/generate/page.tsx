@@ -4,7 +4,10 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { CompositionPreview } from '@/components/CompositionPreview';
 import ShotList from '@/components/ShotList';
-import type { Script, Shot, BrollModelId } from '@/lib/types';
+import PresetPicker from '@/components/PresetPicker';
+import BrandOverride from '@/components/BrandOverride';
+import type { Script, Shot, BrollModelId, BrandPack } from '@/lib/types';
+import type { Preset } from '@/lib/presets';
 import { ShotSchema } from '@/lib/types';
 
 const STEPS = ['script', 'audio', 'video', 'transcribe', 'compose', 'render'] as const;
@@ -107,7 +110,34 @@ export default function GeneratePage() {
   const [doneJob, setDoneJob] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [estimate, setEstimate] = useState<any>(null);
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+  const [brandOverride, setBrandOverride] = useState<Partial<BrandPack> | null>(null);
   const router = useRouter();
+
+  /**
+   * Apply a preset:
+   *  - Sets mode + format.
+   *  - Patches every existing shot's caption_style + broll.model to the preset defaults.
+   *  - In prompt mode: prefills the prompt with the preset's hint template.
+   */
+  const applyPreset = (p: Preset) => {
+    setSelectedPresetId(p.id);
+    setMode(p.mode);
+    setScriptFormat(p.format);
+    if (shots.length > 0) {
+      const next: Shot[] = shots.map((s) => ({
+        ...s,
+        caption_style: p.default_caption_style,
+        broll: s.broll
+          ? { ...s.broll, model: p.default_broll_model, duration: s.broll.duration ?? p.default_shot_duration }
+          : s.broll,
+      }));
+      applyVisualShots(next);
+    }
+    if (inputMode === 'prompt' && p.hint_prompt_template) {
+      setPrompt(p.hint_prompt_template);
+    }
+  };
 
   // Apply changes from the visual editor: update the shots state AND
   // regenerate the JSON textarea so the JSON tab stays in sync.
@@ -192,6 +222,7 @@ export default function GeneratePage() {
       payload.script = parsed;
       payload.duration = parsed.shots.reduce((a: number, s: any) => a + (s.broll?.duration || 4), 0);
     }
+    if (brandOverride) payload.brandOverride = brandOverride;
 
     setRunning(true);
     setError(null);
@@ -246,6 +277,18 @@ export default function GeneratePage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Generate video</h1>
+
+      <PresetPicker
+        selected={selectedPresetId}
+        onPick={applyPreset}
+        currentSnapshot={{
+          mode,
+          format: scriptFormat,
+          default_caption_style: shots[0]?.caption_style ?? 'pill-karaoke',
+          default_broll_model: shots[0]?.broll?.model ?? 'higgsfield',
+          default_shot_duration: shots[0]?.broll?.duration ?? 4,
+        }}
+      />
 
       <div className={showPreview ? 'grid gap-6 lg:grid-cols-[1fr_400px]' : ''}>
         <div className="space-y-6">
@@ -375,6 +418,8 @@ export default function GeneratePage() {
             {estimate.mock && <div className="text-xs text-amber-400 mt-2">Mock mode — sin cargo real</div>}
           </div>
         )}
+
+        <BrandOverride value={brandOverride} onChange={setBrandOverride} />
 
         <button onClick={start} disabled={running || (inputMode === 'prompt' && !prompt) || !!scriptError} className="btn-primary">
           {running ? 'Generando...' : 'Generar video'}

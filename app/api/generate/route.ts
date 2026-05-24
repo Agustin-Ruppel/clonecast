@@ -1,5 +1,5 @@
 import { runPipeline } from '@/lib/pipeline/run';
-import { ScriptSchema, type Script } from '@/lib/types';
+import { ScriptSchema, BrandPackSchema, type Script, type BrandPack } from '@/lib/types';
 import fs from 'fs-extra';
 import path from 'node:path';
 
@@ -7,7 +7,15 @@ export const runtime = 'nodejs';
 export const maxDuration = 600;
 
 export async function POST(req: Request) {
-  const { prompt, script, mode, duration } = await req.json();
+  const { prompt, script, mode, duration, brandOverride } = await req.json();
+
+  let parsedBrandOverride: Partial<BrandPack> | null = null;
+  if (brandOverride && typeof brandOverride === 'object') {
+    const partialBrand = BrandPackSchema.partial().safeParse(brandOverride);
+    if (partialBrand.success) {
+      parsedBrandOverride = partialBrand.data;
+    }
+  }
 
   let parsedScript: Script | undefined;
   if (script) {
@@ -38,7 +46,7 @@ export async function POST(req: Request) {
 
       try {
         const job = await runPipeline({
-          prompt, script: parsedScript, mode, duration, profile,
+          prompt, script: parsedScript, mode, duration, profile, brandOverride: parsedBrandOverride,
           onProgress: (step, progress, message) => send('progress', { step, progress, message }),
         });
         send('done', { job });

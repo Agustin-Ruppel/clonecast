@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { AvatarPicker } from '@/components/AvatarPicker';
+import { VoicePicker, type VoiceMode } from '@/components/VoicePicker';
+import type { CachedAvatar } from '@/lib/db/repos/avatars-cache';
 import type { Preset } from '@/lib/presets';
 
 export type WriteFormat = '9:16' | '16:9' | '1:1';
@@ -38,6 +40,31 @@ export function WriteStep({ initialGuion = '', onSubmit }: WriteStepProps) {
   const [showTemplates, setShowTemplates] = useState(false);
   const [presets, setPresets] = useState<Preset[]>([]);
   const [presetsLoading, setPresetsLoading] = useState(false);
+  const [avatars, setAvatars] = useState<CachedAvatar[]>([]);
+  const [voiceMode, setVoiceMode] = useState<VoiceMode>('native');
+  const [customVoiceId, setCustomVoiceId] = useState<string | null>(null);
+  const [showVoicePicker, setShowVoicePicker] = useState(false);
+
+  useEffect(() => {
+    void fetch('/api/heygen/avatars')
+      .then((r) => r.json() as Promise<{ avatars?: CachedAvatar[] }>)
+      .then((d) => setAvatars(Array.isArray(d.avatars) ? d.avatars : []))
+      .catch(() => setAvatars([]));
+    void fetch('/api/settings')
+      .then((r) => r.json() as Promise<{ voice_mode?: VoiceMode }>)
+      .then((s) => {
+        if (s.voice_mode === 'native' || s.voice_mode === 'custom') setVoiceMode(s.voice_mode);
+      })
+      .catch(() => {});
+    // Custom voice id is set in Settings; we just show "Configurá en Settings"
+    // when missing — VoicePicker handles the link.
+    setCustomVoiceId(null);
+  }, []);
+
+  const selectedAvatar = useMemo(
+    () => avatars.find((a) => a.id === avatarId) ?? null,
+    [avatars, avatarId],
+  );
 
   useEffect(() => {
     const t = setInterval(() => setPlaceholderIdx((i) => (i + 1) % PLACEHOLDERS.length), 5000);
@@ -167,6 +194,39 @@ export function WriteStep({ initialGuion = '', onSubmit }: WriteStepProps) {
       <div className="card space-y-3">
         <label className="label">Avatar</label>
         <AvatarPicker selected={avatarId} onChange={(id) => setAvatarId(id)} allowNone />
+
+        {selectedAvatar && (
+          <div className="flex items-center gap-2 text-xs">
+            <span className={voiceMode === 'native' && selectedAvatar.default_voice_id ? 'pill-success' : 'pill-warning'}>
+              Voz: {voiceMode === 'native' && selectedAvatar.default_voice_id
+                ? `nativa del avatar (${selectedAvatar.default_voice_name ?? 'sin nombre'})`
+                : 'clonada (ElevenLabs)'}
+            </span>
+            <button
+              type="button"
+              className="text-accent-400 hover:underline"
+              onClick={() => setShowVoicePicker((v) => !v)}
+            >
+              {showVoicePicker ? 'ocultar' : 'editar'}
+            </button>
+          </div>
+        )}
+
+        {showVoicePicker && selectedAvatar && (
+          <VoicePicker
+            selectedAvatar={selectedAvatar}
+            selectedVoiceMode={voiceMode}
+            customVoiceId={customVoiceId}
+            onChange={(mode) => {
+              setVoiceMode(mode);
+              void fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ voice_mode: mode }),
+              });
+            }}
+          />
+        )}
       </div>
 
       <div className="flex justify-end">

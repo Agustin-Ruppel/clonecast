@@ -12,6 +12,7 @@ export const SettingsSchema = z.object({
   storage_backend: z.enum(['local', 'r2']).default('local'),
   higgsfield_preset_default: z.enum(HIGGSFIELD_PRESET_IDS).optional(),
   motion_intensity_default: z.enum(MOTION_INTENSITIES).optional(),
+  voice_mode: z.enum(['native', 'custom']).default('native'),
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 

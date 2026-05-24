@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Disclosure } from '@/components/ui/Disclosure';
 import { AvatarPicker } from '@/components/AvatarPicker';
+import { VoicePicker, type VoiceMode } from '@/components/VoicePicker';
+import type { CachedAvatar } from '@/lib/db/repos/avatars-cache';
 
 const STEPS = [
   { key: 'welcome', title: 'Bienvenida', desc: 'Te explico cómo va el setup' },
@@ -68,7 +70,7 @@ export default function SetupPage() {
           {step === 0 && <WelcomeStep onNext={next} />}
           {step === 1 && <ProfileStep value={profile} onChange={setProfile} onNext={next} />}
           {step === 2 && <KeysStep keys={keys} setKeys={setKeys} onNext={next} />}
-          {step === 3 && <VoiceStep voiceId={voiceId} setVoiceId={setVoiceId} onNext={next} />}
+          {step === 3 && <VoiceStep voiceId={voiceId} setVoiceId={setVoiceId} avatarId={avatarId} onNext={next} />}
           {step === 4 && <AvatarStep avatarId={avatarId} setAvatarId={setAvatarId} onNext={next} />}
           {step === 5 && <CharacterStep count={characterCount} onChange={setCharacterCount} onNext={next} />}
           {step === 6 && <BrandStep brand={brand} setBrand={setBrand} onNext={next} />}
@@ -318,25 +320,108 @@ function KeyRow({
   );
 }
 
-function VoiceStep({ voiceId, setVoiceId, onNext }: any) {
-  const save = async () => {
-    await fetch('/api/keys/validate', {
+function VoiceStep({
+  voiceId,
+  setVoiceId,
+  avatarId,
+  onNext,
+}: {
+  voiceId: string;
+  setVoiceId: (v: string) => void;
+  avatarId: string;
+  onNext: () => void;
+}) {
+  const [avatars, setAvatars] = useState<CachedAvatar[]>([]);
+  const [voiceMode, setVoiceMode] = useState<VoiceMode>('native');
+
+  useEffect(() => {
+    void fetch('/api/heygen/avatars')
+      .then((r) => r.json() as Promise<{ avatars?: CachedAvatar[] }>)
+      .then((d) => setAvatars(Array.isArray(d.avatars) ? d.avatars : []))
+      .catch(() => setAvatars([]));
+    void fetch('/api/settings')
+      .then((r) => r.json() as Promise<{ voice_mode?: VoiceMode }>)
+      .then((s) => {
+        if (s.voice_mode === 'native' || s.voice_mode === 'custom') setVoiceMode(s.voice_mode);
+      })
+      .catch(() => {});
+  }, []);
+
+  const selectedAvatar = avatars.find((a) => a.id === avatarId) ?? null;
+
+  // Smart default: native if avatar has voice, else custom.
+  useEffect(() => {
+    if (selectedAvatar?.default_voice_id) setVoiceMode((m) => m ?? 'native');
+    else setVoiceMode((m) => (m === 'native' && !selectedAvatar?.default_voice_id ? 'custom' : m));
+  }, [selectedAvatar]);
+
+  const handleModeChange = (mode: VoiceMode) => {
+    setVoiceMode(mode);
+    void fetch('/api/settings', {
       method: 'POST',
-      body: JSON.stringify({ key: 'ELEVENLABS_VOICE_ID', value: voiceId, persist: true }),
       headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ voice_mode: mode }),
+    });
+  };
+
+  const save = async () => {
+    if (voiceMode === 'custom' && voiceId) {
+      await fetch('/api/keys/validate', {
+        method: 'POST',
+        body: JSON.stringify({ key: 'ELEVENLABS_VOICE_ID', value: voiceId, persist: true }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ voice_mode: voiceMode }),
     });
     onNext();
   };
+
   return (
-    <div className="space-y-4">
-      <p>Necesitamos el <code className="text-accent-400">voice_id</code> de tu voz clonada en ElevenLabs.</p>
-      <ol className="text-sm text-ink-500 space-y-1 list-decimal list-inside">
-        <li>Andá a <a className="text-accent-400 underline" href="https://elevenlabs.io/app/voice-lab" target="_blank" rel="noreferrer">Voice Lab</a></li>
-        <li>Cloná tu voz con un sample de 1+ minuto</li>
-        <li>Copiá el Voice ID y pegalo abajo</li>
-      </ol>
-      <input className="input" placeholder="EXAVITQu4vr4xnSDxMaL" value={voiceId} onChange={(e) => setVoiceId(e.target.value)} />
-      <button onClick={save} disabled={!voiceId} className="btn-primary">Guardar</button>
+    <div className="space-y-5">
+      <p>Elegí qué voz usar para tus videos.</p>
+
+      <VoicePicker
+        selectedAvatar={selectedAvatar}
+        selectedVoiceMode={voiceMode}
+        customVoiceId={voiceId || null}
+        onChange={handleModeChange}
+      />
+
+      {voiceMode === 'custom' && (
+        <div className="space-y-2 pt-2">
+          <p className="text-sm">
+            Necesitamos el <code className="text-accent-400">voice_id</code> de tu voz clonada en ElevenLabs.
+          </p>
+          <ol className="text-sm text-ink-500 space-y-1 list-decimal list-inside">
+            <li>
+              Andá a{' '}
+              <a className="text-accent-400 underline" href="https://elevenlabs.io/app/voice-lab" target="_blank" rel="noreferrer">
+                Voice Lab
+              </a>
+            </li>
+            <li>Cloná tu voz con un sample de 1+ minuto</li>
+            <li>Copiá el Voice ID y pegalo abajo</li>
+          </ol>
+          <input
+            className="input"
+            placeholder="EXAVITQu4vr4xnSDxMaL"
+            value={voiceId}
+            onChange={(e) => setVoiceId(e.target.value)}
+          />
+        </div>
+      )}
+
+      <button
+        onClick={save}
+        disabled={voiceMode === 'custom' && !voiceId}
+        className="btn-primary"
+      >
+        Guardar
+      </button>
     </div>
   );
 }

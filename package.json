@@ -34,6 +34,8 @@
     "@anthropic-ai/sdk": "^0.30.0",
     "@aws-sdk/client-s3": "^3.1053.0",
     "@aws-sdk/s3-request-presigner": "^3.1053.0",
+    "@hyperframes/core": "^0.6.40",
+    "@hyperframes/producer": "^0.6.40",
     "dotenv": "^16.4.5",
     "execa": "^9.5.0",
     "fs-extra": "^11.2.0",

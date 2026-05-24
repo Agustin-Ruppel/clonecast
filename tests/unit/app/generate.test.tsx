@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import GenerateV2Page from '@/app/generate-v2/page';
+import GeneratePage from '@/app/generate/page';
 import { ToastProvider } from '@/components/ui/Toast';
 
 beforeEach(() => {
@@ -17,11 +17,11 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('/generate-v2 page', () => {
+describe('/generate page', () => {
   it('renders WriteStep with textarea and Planear video button', async () => {
     render(
       <ToastProvider>
-        <GenerateV2Page />
+        <GeneratePage />
       </ToastProvider>,
     );
     await waitFor(() => {

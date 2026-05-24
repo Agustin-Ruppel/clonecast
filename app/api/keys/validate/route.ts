@@ -3,16 +3,29 @@ import { validators } from '@/lib/providers';
 import { persistSecrets } from '@/lib/core/secrets';
 import type { ProviderKey } from '@/lib/types';
 
-export async function POST(req: Request) {
-  const { key, value, persist } = (await req.json()) as { key: ProviderKey; value: string; persist?: boolean };
+const ENV_VAR_SHAPE = /^[A-Z_][A-Z0-9_]+$/;
 
-  const validator = validators[key];
-  if (!validator) return NextResponse.json({ ok: false, error: 'Unknown key' }, { status: 400 });
+export async function POST(req: Request) {
+  const { key, value, persist } = (await req.json()) as { key: string; value: string; persist?: boolean };
+
+  const validator = (validators as Record<string, ((value: string) => Promise<{ ok: boolean; error?: string }>) | undefined>)[key];
+
+  // Non-validator key (e.g. HEYGEN_AVATAR_ID, ELEVENLABS_VOICE_ID): skip validation, persist directly.
+  if (!validator) {
+    if (!ENV_VAR_SHAPE.test(key)) {
+      return NextResponse.json({ ok: false, error: 'Unknown key' }, { status: 400 });
+    }
+    if (persist) {
+      await persistSecrets({ [key]: value });
+      return NextResponse.json({ ok: true, persisted: true });
+    }
+    return NextResponse.json({ ok: true });
+  }
 
   const result = await validator(value);
 
   if (result.ok && persist) {
-    await persistSecrets({ [key]: value });
+    await persistSecrets({ [key as ProviderKey]: value });
   }
 
   return NextResponse.json(result);

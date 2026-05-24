@@ -59,6 +59,15 @@ export type HiggsfieldPresetId = (typeof HIGGSFIELD_PRESET_IDS)[number];
 export const MOTION_INTENSITIES = ['low', 'medium', 'high'] as const;
 export type MotionIntensity = (typeof MOTION_INTENSITIES)[number];
 
+export const HIGGSFIELD_MODES = [
+  'photodump',
+  'soul-cinema-studio',
+  'cinema-studio',
+  'soul-cast',
+  'image-to-video',
+] as const;
+export type HiggsfieldMode = (typeof HIGGSFIELD_MODES)[number];
+
 /**
  * Normalize legacy model strings (e.g. `'higgsfield/photodump'`) to the new
  * enum. Anything starting with `'higgsfield'` becomes `'higgsfield'`; any of
@@ -84,6 +93,7 @@ export const ShotSchema = z.object({
       duration: z.number().default(4),
       use_character_ref: z.boolean().default(true),
       higgsfield_preset: z.enum(HIGGSFIELD_PRESET_IDS).optional(),
+      higgsfield_mode: z.enum(HIGGSFIELD_MODES).optional(),
       motion_intensity: z.enum(MOTION_INTENSITIES).optional(),
     })
     .optional(),

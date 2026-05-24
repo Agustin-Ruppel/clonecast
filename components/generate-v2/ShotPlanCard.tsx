@@ -3,8 +3,16 @@
 import { useState } from 'react';
 import type { PlannedShot } from '@/lib/planner/types';
 import { CAPTION_STYLE_IDS } from '@/lib/composition/caption-styles';
-import type { CaptionStyleId, BrollModelId } from '@/lib/types';
-import { BROLL_MODEL_IDS } from '@/lib/types';
+import type { CaptionStyleId, BrollModelId, HiggsfieldMode } from '@/lib/types';
+import { BROLL_MODEL_IDS, HIGGSFIELD_MODES } from '@/lib/types';
+
+const HIGGSFIELD_MODE_TOOLTIPS: Record<HiggsfieldMode, string> = {
+  photodump: 'Foto-realista, preset-driven. Ideal para shots de producto / lifestyle.',
+  'soul-cinema-studio': 'Cinematográfico con feel "Soul". Buenos planos amplios y luces suaves.',
+  'cinema-studio': 'Cine pro 3.5 — máxima calidad, más lento y costoso.',
+  'soul-cast': 'Multi-personaje con consistencia de cara. Usa character references.',
+  'image-to-video': 'Animá una imagen estática (Kling). Requiere image_url.',
+};
 
 const TYPE_LABELS: Record<PlannedShot['type'], string> = {
   avatar: 'Avatar',
@@ -25,6 +33,7 @@ export function ShotPlanCard({ shot, index, onChange, avatarPreviewUrl }: ShotPl
   const [showAdvanced, setShowAdvanced] = useState(false);
   // Local model state — PlannedShot doesn't carry model, but we expose UI for it.
   const [model, setModel] = useState<BrollModelId>('higgsfield');
+  const [higgsfieldMode, setHiggsfieldMode] = useState<HiggsfieldMode>('photodump');
 
   const patch = (p: Partial<PlannedShot>) => onChange({ ...shot, ...p });
 
@@ -159,6 +168,25 @@ export function ShotPlanCard({ shot, index, onChange, avatarPreviewUrl }: ShotPl
                     ))}
                   </select>
                 </div>
+                {model === 'higgsfield' && shot.type !== 'avatar' && (
+                  <div>
+                    <label className="label">Higgsfield mode</label>
+                    <select
+                      className="input"
+                      value={higgsfieldMode}
+                      onChange={(e) => setHiggsfieldMode(e.target.value as HiggsfieldMode)}
+                      title={HIGGSFIELD_MODE_TOOLTIPS[higgsfieldMode]}
+                      data-testid={`higgsfield-mode-${index}`}
+                    >
+                      {HIGGSFIELD_MODES.map((m) => (
+                        <option key={m} value={m} title={HIGGSFIELD_MODE_TOOLTIPS[m]}>
+                          {m}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[10px] text-ink-500 mt-1">{HIGGSFIELD_MODE_TOOLTIPS[higgsfieldMode]}</p>
+                  </div>
+                )}
                 <div>
                   <label className="label">Caption style</label>
                   <select

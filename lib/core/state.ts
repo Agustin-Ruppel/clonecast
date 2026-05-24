@@ -3,9 +3,18 @@ import path from 'node:path';
 import { getSecret, isMockMode } from './secrets';
 import { ProviderKeys } from '../types';
 import type { JobState } from '../types';
+import { runMigrations } from '../db/migrations';
+import * as jobsRepo from '../db/repos/jobs';
 
 const STATE_DIR = path.join(process.cwd(), 'state');
 const ASSETS_DIR = path.join(process.cwd(), 'assets');
+
+let _migrated = false;
+async function ensureMigrated(): Promise<void> {
+  if (_migrated) return;
+  await runMigrations();
+  _migrated = true;
+}
 
 export async function getSetupStatus() {
   const keys = ProviderKeys.filter((k) => !!getSecret(k));
@@ -51,19 +60,16 @@ async function safeReaddir(dir: string): Promise<string[]> {
 }
 
 export async function saveJobState(job: JobState): Promise<void> {
-  await fs.ensureDir(STATE_DIR);
-  await fs.writeJson(path.join(STATE_DIR, `${job.id}.json`), job, { spaces: 2 });
+  await ensureMigrated();
+  await jobsRepo.upsertJob(job);
 }
 
 export async function loadJobState(id: string): Promise<JobState | null> {
-  const p = path.join(STATE_DIR, `${id}.json`);
-  if (!(await fs.pathExists(p))) return null;
-  return await fs.readJson(p);
+  await ensureMigrated();
+  return jobsRepo.loadJob(id);
 }
 
 export async function listJobs(): Promise<JobState[]> {
-  await fs.ensureDir(STATE_DIR);
-  const files = (await fs.readdir(STATE_DIR)).filter((f) => f.startsWith('video-') && f.endsWith('.json'));
-  const jobs = await Promise.all(files.map((f) => fs.readJson(path.join(STATE_DIR, f))));
-  return jobs.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  await ensureMigrated();
+  return jobsRepo.listJobs();
 }

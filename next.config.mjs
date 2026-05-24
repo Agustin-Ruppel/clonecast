@@ -5,7 +5,15 @@ const nextConfig = {
   // only loaded via dynamic import inside the renderVideo() path — externalize.
   // @hyperframes/core ships ESM with extensionless internal imports; Node ESM
   // can't resolve those, so we let webpack bundle it (don't externalize).
-  serverExternalPackages: ['fs-extra', '@hyperframes/producer', '@hyperframes/engine'],
+  serverExternalPackages: [
+    'fs-extra',
+    '@hyperframes/producer',
+    '@hyperframes/engine',
+    '@libsql/client',
+    '@libsql/kysely-libsql',
+    'libsql',
+    'keytar',
+  ],
   webpack: (config, { isServer }) => {
     if (isServer) {
       // hyperframesRuntime.engine pulls in esbuild's buildSync — only used by the

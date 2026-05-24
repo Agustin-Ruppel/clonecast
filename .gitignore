@@ -1,0 +1,85 @@
+# ─── Secrets ──────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+credentials.json
+secrets.json
+.secrets/
+
+# ─── Assets sensibles del creador (PII / biométricos) ────
+assets/character/*
+!assets/character/.gitkeep
+assets/voice/*
+!assets/voice/.gitkeep
+assets/brand/*
+!assets/brand/.gitkeep
+assets/style/*
+!assets/style/.gitkeep
+
+# ─── Outputs y estado runtime ────────────────────────────
+outputs/*
+!outputs/.gitkeep
+state/*
+!state/.gitkeep
+tmp/*
+!tmp/.gitkeep
+*.mp4
+*.mov
+*.mp3
+*.wav
+*.webm
+*.mkv
+!examples/**/*.mp4
+!examples/**/*.mp3
+!tests/fixtures/**
+
+# ─── Next.js ─────────────────────────────────────────────
+.next/
+out/
+next-env.d.ts
+
+# ─── Node ────────────────────────────────────────────────
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+.npm
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# ─── Python ──────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.python-version
+
+# ─── OS ──────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ─── IDE ─────────────────────────────────────────────────
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.sublime-*
+
+# ─── Logs / cache ────────────────────────────────────────
+logs/
+*.log
+.cache/
+.turbo/
+coverage/
+.nyc_output/
+
+# ─── Hyperframes intermedios ─────────────────────────────
+compositions/**/preview-cache/
+compositions/**/render-frames/

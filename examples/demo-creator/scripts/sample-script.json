@@ -1,0 +1,50 @@
+{
+  "video_id": "demo-001",
+  "mode": "reel-broll",
+  "format": "9:16",
+  "duration_target": 30,
+  "language": "es-AR",
+  "shots": [
+    {
+      "type": "speak",
+      "text": "Hace seis meses no sabía nada de IA. Hoy automatizo procesos enteros de clientes.",
+      "broll": {
+        "prompt": "Person at a clean modern desk, typing on a laptop, cinematic dolly-in, warm lighting",
+        "model": "higgsfield/photodump",
+        "duration": 4,
+        "use_character_ref": true
+      },
+      "caption_style": "pill-karaoke"
+    },
+    {
+      "type": "speak",
+      "text": "Y no es magia. Es seguir un proceso simple, paso a paso.",
+      "broll": {
+        "prompt": "Person walking through a sunlit office hallway, slight slow motion, shallow depth of field",
+        "model": "higgsfield/photodump",
+        "duration": 4,
+        "use_character_ref": true
+      },
+      "caption_style": "pill-karaoke"
+    },
+    {
+      "type": "speak",
+      "text": "Te lo cuento en el próximo video. Seguime para no perdértelo.",
+      "broll": {
+        "prompt": "Person looking at camera, smiling subtly, holding a phone, close up, soft natural light",
+        "model": "higgsfield/photodump",
+        "duration": 5,
+        "use_character_ref": true
+      },
+      "caption_style": "kinetic-slam"
+    }
+  ],
+  "overlays": {
+    "lower_third_intro": false,
+    "logo": {
+      "placement": "bottom-right",
+      "from_second": 0,
+      "to_second": 30
+    }
+  }
+}

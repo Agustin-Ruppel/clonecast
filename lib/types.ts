@@ -77,6 +77,7 @@ export interface JobState {
     render: StepStatus;
   };
   output_path?: string;
+  output_url?: string;
   cost_usd?: number;
   error?: string;
 }

@@ -4,12 +4,23 @@
   "private": false,
   "description": "Open-source web pipeline to produce AI-clone video content (reels, classes, ads) with avatar + personalized B-rolls + word-level captions. Zero terminal needed.",
   "keywords": [
-    "video", "ai", "avatar", "heygen", "elevenlabs", "hyperframes",
-    "higgsfield", "whisper", "pipeline", "content-creation", "nextjs"
+    "video",
+    "ai",
+    "avatar",
+    "heygen",
+    "elevenlabs",
+    "hyperframes",
+    "higgsfield",
+    "whisper",
+    "pipeline",
+    "content-creation",
+    "nextjs"
   ],
   "author": "Clonecast contributors",
   "license": "MIT",
-  "engines": { "node": ">=22.0.0" },
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "dev": "next dev -p 4242",
     "build": "next build",
@@ -21,6 +32,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
+    "@aws-sdk/client-s3": "^3.1053.0",
+    "@aws-sdk/s3-request-presigner": "^3.1053.0",
     "dotenv": "^16.4.5",
     "execa": "^9.5.0",
     "fs-extra": "^11.2.0",

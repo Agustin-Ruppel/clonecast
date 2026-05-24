@@ -3,6 +3,7 @@ import path from 'node:path';
 import { buildScript, synthesize, transcribe, createAvatarVideo, pollAvatarVideo, generateBroll, pollBroll, composeHTML, renderVideo } from '../providers';
 import { saveJobState } from '../core/state';
 import { isMockMode } from '../core/secrets';
+import { getStorage } from '../storage';
 import type { JobState, CreatorProfile } from '../types';
 
 import type { Script } from '../types';
@@ -119,6 +120,10 @@ export async function runPipeline(opts: {
     await renderVideo(htmlPath, outputMp4);
     job.steps.render = { status: 'done' };
     job.output_path = outputMp4;
+    if (!job.output_url) {
+      const storage = getStorage();
+      job.output_url = await storage.upload(outputMp4, { keyPrefix: 'outputs', contentType: 'video/mp4' });
+    }
     job.status = 'done';
     opts.onProgress('render', 100, isMockMode() ? '✓ Done (mock mode — no real video rendered)' : '✓ Done');
 

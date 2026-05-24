@@ -1,6 +1,6 @@
 import fs from 'fs-extra';
 import path from 'node:path';
-import { getSecret, isMockMode } from './secrets';
+import { getSecret, isMockMode, migrateLegacyEnvSecrets, preloadSecrets } from './secrets';
 import { ProviderKeys } from '../types';
 import type { JobState } from '../types';
 import { runMigrations } from '../db/migrations';
@@ -16,6 +16,8 @@ async function ensureMigrated(): Promise<void> {
   if (_migrated) return;
   await runMigrations();
   await migrateLegacyState(STATE_DIR);
+  await migrateLegacyEnvSecrets();
+  await preloadSecrets();
   _migrated = true;
 }
 

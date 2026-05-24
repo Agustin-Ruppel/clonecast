@@ -46,3 +46,25 @@ rm -f ~/.clonecast/keychain-fallback.json
 ```
 
 Next start will generate a new master key. Existing encrypted secrets become unreadable — you'll need to re-enter them in `/setup`.
+
+---
+
+## How secrets actually work in v0.2.1
+
+Before v0.2.1, pasting an API key in the wizard wrote it to `.env.local`. That had two problems: keys lived in plaintext on disk, and Next.js dev server doesn't hot-reload env vars — so the new key wasn't visible to the same process without a restart.
+
+### What changed
+
+- API keys are now stored in the `secrets` table of the per-workspace SQLite DB, encrypted with AES-256-GCM. The 32-byte master key lives in the OS keychain (`keytar`), one per workspace.
+- `lib/secrets/store.ts` exposes async `setSecret` / `getSecretAsync` / `deleteSecret` / `listSecretKeys`.
+- `lib/core/secrets.ts` keeps the legacy sync `getSecret(key): string | undefined` signature. It now reads from an in-process **mirror** of the encrypted store, populated by `preloadSecrets()`.
+- `persistSecrets(updates)` writes through to the encrypted store, updates the mirror, **and** sets `process.env[k]` — so the same request sees the new value immediately, with no restart.
+- API routes that read secrets call `await preloadSecrets()` after `activateRequestWorkspace()`. The call short-circuits when already loaded for the active workspace.
+
+### `.env.local` going forward
+
+`.env.local` is reserved for dev flags only: `CLONECAST_MOCK`, `NODE_ENV`, ports, hostnames, etc. Anything ending in `_API_KEY`, `_VOICE_ID`, or `_AVATAR_ID` is automatically moved to the encrypted store on first run by `migrateLegacyEnvSecrets()`, leaving a `# Migrated to encrypted store: KEY_NAME` comment in its place. The migration is idempotent.
+
+### HeyGen avatars endpoint
+
+`GET /api/heygen/avatars` now prefers a real `HEYGEN_API_KEY` over `CLONECAST_MOCK=true`. The response includes `source: 'real' | 'mock'` and the `AvatarPicker` shows a small status pill so users know which data they're looking at.

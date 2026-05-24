@@ -4,7 +4,7 @@ import {
   setCachedAvatars,
   type CachedAvatar,
 } from '@/lib/db/repos/avatars-cache';
-import { isMockMode, getSecret } from '@/lib/core/secrets';
+import { getSecret, preloadSecrets } from '@/lib/core/secrets';
 import { activateRequestWorkspace } from '@/lib/core/active-workspace';
 
 const MOCK_AVATARS: CachedAvatar[] = [
@@ -46,36 +46,49 @@ function mapHeyGen(raw: HeyGenAvatarRaw): CachedAvatar | null {
 
 export async function GET(req: Request) {
   await activateRequestWorkspace();
+  await preloadSecrets();
   const url = new URL(req.url);
   const refresh = url.searchParams.get('refresh') === '1';
 
+  const key = getSecret('HEYGEN_API_KEY');
+  const hasRealKey = !!key && key.length > 8;
+
+  // Cache hit — respect, but still tag the source based on whether a real key is configured.
   if (!refresh) {
     const cached = await getCachedAvatars('heygen');
     if (cached && cached.length > 0) {
-      return NextResponse.json({ avatars: cached, cached: true });
+      return NextResponse.json({
+        avatars: cached,
+        cached: true,
+        source: hasRealKey ? 'real' : 'mock',
+      });
     }
   }
 
-  if (isMockMode()) {
+  // No real key configured → return mocks regardless of CLONECAST_MOCK.
+  if (!hasRealKey) {
     await setCachedAvatars('heygen', MOCK_AVATARS);
-    return NextResponse.json({ avatars: MOCK_AVATARS, cached: false, mock: true });
+    return NextResponse.json({
+      avatars: MOCK_AVATARS,
+      cached: false,
+      mock: true,
+      source: 'mock',
+    });
   }
 
-  const key = getSecret('HEYGEN_API_KEY');
-  if (!key) {
-    return NextResponse.json(
-      { avatars: [], cached: false, error: 'HEYGEN_API_KEY not set' },
-      { status: 200 },
-    );
-  }
-
+  // Real key present → call HeyGen, even if mock mode flag is on.
   try {
     const res = await fetch('https://api.heygen.com/v2/avatars', {
       headers: { 'X-Api-Key': key, Accept: 'application/json' },
     });
     if (!res.ok) {
       return NextResponse.json(
-        { avatars: [], cached: false, error: `HeyGen API ${res.status}` },
+        {
+          avatars: [],
+          cached: false,
+          source: 'real',
+          error: `HeyGen API ${res.status}`,
+        },
         { status: 200 },
       );
     }
@@ -87,12 +100,13 @@ export async function GET(req: Request) {
       if (a) mapped.push(a);
     }
     await setCachedAvatars('heygen', mapped);
-    return NextResponse.json({ avatars: mapped, cached: false });
+    return NextResponse.json({ avatars: mapped, cached: false, source: 'real' });
   } catch (err) {
     return NextResponse.json(
       {
         avatars: [],
         cached: false,
+        source: 'real',
         error: err instanceof Error ? err.message : 'fetch failed',
       },
       { status: 200 },

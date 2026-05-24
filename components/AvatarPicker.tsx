@@ -7,6 +7,7 @@ interface ApiResponse {
   avatars: CachedAvatar[];
   cached: boolean;
   mock?: boolean;
+  source?: 'real' | 'mock';
   error?: string;
 }
 
@@ -21,6 +22,7 @@ export function AvatarPicker({ selected, onChange, allowNone }: AvatarPickerProp
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [source, setSource] = useState<'real' | 'mock' | null>(null);
 
   const load = useCallback(async (refresh = false) => {
     setLoading(true);
@@ -31,6 +33,7 @@ export function AvatarPicker({ selected, onChange, allowNone }: AvatarPickerProp
       const data = (await res.json()) as ApiResponse;
       if (data.error) setError(data.error);
       setAvatars(Array.isArray(data.avatars) ? data.avatars : []);
+      setSource(data.source ?? (data.mock ? 'mock' : null));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'fetch failed');
       setAvatars([]);
@@ -95,6 +98,14 @@ export function AvatarPicker({ selected, onChange, allowNone }: AvatarPickerProp
 
   return (
     <div className="space-y-3">
+      {source === 'real' && (
+        <span className="pill-success inline-block text-xs">Conectado a tu cuenta HeyGen</span>
+      )}
+      {source === 'mock' && (
+        <span className="pill-warning inline-block text-xs">
+          Mostrando ejemplos — configurá HEYGEN_API_KEY en Settings
+        </span>
+      )}
       <div className="flex items-center justify-between gap-3">
         {avatars.length > 12 ? (
           <input

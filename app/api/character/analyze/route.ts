@@ -2,13 +2,16 @@ import { NextResponse } from 'next/server';
 import fs from 'fs-extra';
 import path from 'node:path';
 import Anthropic from '@anthropic-ai/sdk';
-import { getSecret, isMockMode } from '@/lib/core/secrets';
+import { getSecret, isMockMode, preloadSecrets } from '@/lib/core/secrets';
+import { activateRequestWorkspace } from '@/lib/core/active-workspace';
 import { CharacterPackSchema } from '@/lib/types';
 
 const DIR = path.join(process.cwd(), 'assets', 'character');
 const META = path.join(DIR, 'character.json');
 
 export async function POST() {
+  await activateRequestWorkspace();
+  await preloadSecrets();
   const files = (await fs.pathExists(DIR))
     ? (await fs.readdir(DIR)).filter((f) => /\.(jpg|jpeg|png|webp)$/i.test(f))
     : [];

@@ -13,7 +13,8 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
-import { getSecret, isMockMode } from '@/lib/core/secrets';
+import { getSecret, isMockMode, preloadSecrets } from '@/lib/core/secrets';
+import { activateRequestWorkspace } from '@/lib/core/active-workspace';
 import { ScriptSchema, type Script, type Shot } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -120,6 +121,8 @@ No prose, no markdown fences — JSON array only.`;
 }
 
 export async function POST(req: Request) {
+  await activateRequestWorkspace();
+  await preloadSecrets();
   let body: unknown;
   try {
     body = await req.json();

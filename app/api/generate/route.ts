@@ -2,11 +2,13 @@ import { runPipeline } from '@/lib/pipeline/run';
 import { ScriptSchema, BrandPackSchema, type Script, type BrandPack } from '@/lib/types';
 import fs from 'fs-extra';
 import path from 'node:path';
+import { activateRequestWorkspace } from '@/lib/core/active-workspace';
 
 export const runtime = 'nodejs';
 export const maxDuration = 600;
 
 export async function POST(req: Request) {
+  await activateRequestWorkspace();
   const { prompt, script, mode, duration, brandOverride } = await req.json();
 
   let parsedBrandOverride: Partial<BrandPack> | null = null;

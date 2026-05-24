@@ -5,6 +5,7 @@ import {
   type CachedAvatar,
 } from '@/lib/db/repos/avatars-cache';
 import { isMockMode, getSecret } from '@/lib/core/secrets';
+import { activateRequestWorkspace } from '@/lib/core/active-workspace';
 
 const MOCK_AVATARS: CachedAvatar[] = [
   { id: 'mock_avatar_1', name: 'Alex (mock)', preview_image_url: '/api/mock-avatar/1', gender: 'male' },
@@ -44,6 +45,7 @@ function mapHeyGen(raw: HeyGenAvatarRaw): CachedAvatar | null {
 }
 
 export async function GET(req: Request) {
+  await activateRequestWorkspace();
   const url = new URL(req.url);
   const refresh = url.searchParams.get('refresh') === '1';
 

@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
 import { PlannerInputSchema } from '@/lib/planner/types';
 import { planShots } from '@/lib/planner/run';
+import { activateRequestWorkspace } from '@/lib/core/active-workspace';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
+  await activateRequestWorkspace();
   const body = await req.json();
   const parsed = PlannerInputSchema.safeParse(body);
   if (!parsed.success) {

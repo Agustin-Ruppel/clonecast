@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { CreatorProfileSchema } from '@/lib/types';
 import { getDb } from '@/lib/db/connection';
 import { runMigrations } from '@/lib/db/migrations';
+import { activateRequestWorkspace } from '@/lib/core/active-workspace';
 
 interface ProfileRow {
   name: string;
@@ -11,6 +12,7 @@ interface ProfileRow {
 }
 
 export async function GET() {
+  await activateRequestWorkspace();
   await runMigrations();
   const db = await getDb();
   const row = (await db
@@ -35,6 +37,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  await activateRequestWorkspace();
   const body = await req.json();
   const parsed = CreatorProfileSchema.safeParse(body);
   if (!parsed.success) {

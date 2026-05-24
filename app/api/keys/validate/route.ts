@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 import { validators } from '@/lib/providers';
 import { persistSecrets } from '@/lib/core/secrets';
 import type { ProviderKey } from '@/lib/types';
+import { activateRequestWorkspace } from '@/lib/core/active-workspace';
 
 const ENV_VAR_SHAPE = /^[A-Z_][A-Z0-9_]+$/;
 
 export async function POST(req: Request) {
+  await activateRequestWorkspace();
   const { key, value, persist } = (await req.json()) as { key: string; value: string; persist?: boolean };
 
   const validator = (validators as Record<string, ((value: string) => Promise<{ ok: boolean; error?: string }>) | undefined>)[key];

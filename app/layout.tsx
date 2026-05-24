@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import './globals.css';
 import { Providers } from './Providers';
+import { WorkspaceSwitcher } from '@/components/WorkspaceSwitcher';
 
 export const metadata: Metadata = {
   title: 'Clonecast — AI Video Pipeline',
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <Link href="/generate" className="btn-ghost">Generate</Link>
                 <Link href="/library" className="btn-ghost">Library</Link>
                 <Link href="/settings" className="btn-ghost">Settings</Link>
+                <WorkspaceSwitcher />
                 <Link href="/setup" className="btn-secondary ml-2">Setup</Link>
               </nav>
             </div>

@@ -2,11 +2,13 @@ import { NextResponse } from 'next/server';
 import fs from 'fs-extra';
 import path from 'node:path';
 import { CharacterPackSchema } from '@/lib/types';
+import { activateRequestWorkspace } from '@/lib/core/active-workspace';
 
 const CHARACTER_DIR = path.join(process.cwd(), 'assets', 'character');
 const META_PATH = path.join(CHARACTER_DIR, 'character.json');
 
 export async function GET() {
+  await activateRequestWorkspace();
   await fs.ensureDir(CHARACTER_DIR);
   const files = (await fs.readdir(CHARACTER_DIR)).filter((f) => /\.(jpg|jpeg|png|webp)$/i.test(f));
   const meta = (await fs.pathExists(META_PATH)) ? await fs.readJson(META_PATH) : null;
@@ -14,6 +16,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  await activateRequestWorkspace();
   const formData = await req.formData();
   const action = formData.get('action');
 
@@ -36,6 +39,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  await activateRequestWorkspace();
   const { name } = await req.json();
   if (!name) return NextResponse.json({ error: 'No name' }, { status: 400 });
   const safe = path.join(CHARACTER_DIR, path.basename(name));

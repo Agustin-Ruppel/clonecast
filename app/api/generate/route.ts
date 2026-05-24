@@ -1,4 +1,5 @@
 import { runPipeline } from '@/lib/pipeline/run';
+import { ScriptSchema, type Script } from '@/lib/types';
 import fs from 'fs-extra';
 import path from 'node:path';
 
@@ -6,7 +7,24 @@ export const runtime = 'nodejs';
 export const maxDuration = 600;
 
 export async function POST(req: Request) {
-  const { prompt, mode, duration } = await req.json();
+  const { prompt, script, mode, duration } = await req.json();
+
+  let parsedScript: Script | undefined;
+  if (script) {
+    const parsed = ScriptSchema.safeParse({
+      video_id: 'temp',
+      mode,
+      duration_target: duration,
+      ...script,
+    });
+    if (!parsed.success) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid script', details: parsed.error.flatten() }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    parsedScript = parsed.data;
+  }
 
   const profilePath = path.join(process.cwd(), 'state', 'creator-profile.json');
   const profile = (await fs.pathExists(profilePath)) ? await fs.readJson(profilePath) : null;
@@ -20,7 +38,7 @@ export async function POST(req: Request) {
 
       try {
         const job = await runPipeline({
-          prompt, mode, duration, profile,
+          prompt, script: parsedScript, mode, duration, profile,
           onProgress: (step, progress, message) => send('progress', { step, progress, message }),
         });
         send('done', { job });

@@ -5,8 +5,11 @@ import { saveJobState } from '../core/state';
 import { isMockMode } from '../core/secrets';
 import type { JobState, CreatorProfile } from '../types';
 
+import type { Script } from '../types';
+
 export async function runPipeline(opts: {
-  prompt: string;
+  prompt?: string;
+  script?: Script;
   mode: 'class' | 'reel-avatar' | 'reel-broll';
   duration: number;
   profile: CreatorProfile | null;
@@ -33,13 +36,21 @@ export async function runPipeline(opts: {
   };
 
   try {
-    opts.onProgress('script', 0, 'Generating script with Claude...');
-    job.steps.script.status = 'running';
-    await saveJobState(job);
-    const script = await buildScript({ prompt: opts.prompt, mode: opts.mode, duration: opts.duration, videoId: id, profile: opts.profile });
+    let script: Script;
+    if (opts.script) {
+      opts.onProgress('script', 0, 'Using provided script (skipping Claude)...');
+      script = { ...opts.script, video_id: id };
+      job.steps.script = { status: 'done', message: `${script.shots.length} shots (manual)` };
+      opts.onProgress('script', 100);
+    } else {
+      opts.onProgress('script', 0, 'Generating script with Claude...');
+      job.steps.script.status = 'running';
+      await saveJobState(job);
+      script = await buildScript({ prompt: opts.prompt!, mode: opts.mode, duration: opts.duration, videoId: id, profile: opts.profile });
+      job.steps.script = { status: 'done', message: `${script.shots.length} shots` };
+      opts.onProgress('script', 100);
+    }
     job.script = script;
-    job.steps.script = { status: 'done', message: `${script.shots.length} shots` };
-    opts.onProgress('script', 100);
 
     opts.onProgress('audio', 0, 'Synthesizing audio (ElevenLabs)...');
     job.steps.audio.status = 'running';

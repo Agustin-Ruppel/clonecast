@@ -146,7 +146,7 @@ Mock mode: $0.
 
 ## Estado
 
-**Alpha (Fase 1/6).** Hoy funciona:
+**v0.2-alpha.** Hoy funciona:
 
 - ✅ Wizard web completo (7 pasos, sin terminal)
 - ✅ Validación real de API keys con ping a cada servicio
@@ -166,6 +166,22 @@ Mock mode: $0.
 - Character pack auto-analysis con Claude Vision
 
 Ver [PLAN.md](PLAN.md) para roadmap completo.
+
+---
+
+## What's new in v0.2
+
+- **Visual AvatarPicker** — adios pegar `avatar_id`. Trae tus avatares de HeyGen con caché de 24h y botón de refresh. En `/setup` y `/generate`.
+- **AI shot planner** — un brief de 1 línea o un guion completo se convierte en un plan de shots (avatar / avatar+broll / broll-only) con prompts en inglés, captions sugeridas y thumbnails predichos.
+- **Nueva UI /generate (4 pasos)** — WRITE → PLAN → RENDER → REVIEW. ShotPlanCards visuales, edición inline, undo (Cmd+Z).
+- **SQLite por workspace** — todo el estado (profile, jobs, settings, presets, brand, character meta) en `~/.clonecast/workspace-<id>.db`. Migración desde `state/*.json` automática y one-shot.
+- **Multi-workspace** — switcher en la nav. Activación por cookie, sin reinicio del server. Un install, varios creadores/clientes/personas. Ver [docs/11-workspaces.md](docs/11-workspaces.md).
+- **Secrets cifrados at rest** — AES-256-GCM, master key en OS keychain (Keychain / libsecret / DPAPI). Ver [docs/12-storage-encryption.md](docs/12-storage-encryption.md).
+- **Nuevos providers** — Cartesia (TTS, 40ms TTFB), Runway Gen-4.5 (hero shots), Cloudflare R2 storage adapter.
+- **Hyperframes SDK** — render programático con `@hyperframes/producer` (CLI como fallback), 18 caption styles, preview de composición en el browser.
+- **Otros** — per-shot model + caption style + duration, brand override por video, 5 presets built-in incluyendo ★ Combo Esencial, atajos de teclado (`gg`, `gl`, `gs`, `?`), toasts.
+
+> Screenshots TBD — el flow nuevo cambió bastante y los caps anteriores quedaron viejos. Vienen en el próximo bump.
 
 ---
 

@@ -63,7 +63,7 @@ El wizard tiene 10 fases. Tiempos aproximados:
 2. **Identidad** (2 min) — nombre, idioma, plataformas.
 3. **API keys** (3 min) — una por una, validadas con ping.
 4. **Voz clonada** (2 min) — si no tenés, te guía para clonarla en ElevenLabs.
-5. **Avatar** (2 min, opcional) — pegás `avatar_id` de HeyGen.
+5. **Avatar** (2 min, opcional) — visual picker: trae tus avatares de HeyGen y elegís con un click (con caché de 24h y botón de refresh). Sin pegar IDs a mano.
 6. **Character Pack** (3 min) — subís fotos, validamos. Ver [02-character-pack.md](02-character-pack.md).
 7. **Brand Pack** (2 min) — logo + paleta + fuente. Ver [03-brand-pack.md](03-brand-pack.md).
 8. **Estilo** (1 min) — elegís caption style default + referencias.

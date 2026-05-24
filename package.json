@@ -1,6 +1,6 @@
 {
   "name": "clonecast",
-  "version": "0.1.0-alpha.0",
+  "version": "0.2.0",
   "private": false,
   "description": "Open-source web pipeline to produce AI-clone video content (reels, classes, ads) with avatar + personalized B-rolls + word-level captions. Zero terminal needed.",
   "keywords": [

@@ -40,13 +40,31 @@ export const BrandPackSchema = z.object({
 });
 export type BrandPack = z.infer<typeof BrandPackSchema>;
 
+export const BROLL_MODEL_IDS = ['higgsfield', 'kling', 'runway', 'veo'] as const;
+export type BrollModelId = (typeof BROLL_MODEL_IDS)[number];
+
+/**
+ * Normalize legacy model strings (e.g. `'higgsfield/photodump'`) to the new
+ * enum. Anything starting with `'higgsfield'` becomes `'higgsfield'`; any of
+ * the 4 canonical ids passes through; unknown values fall back to
+ * `'higgsfield'` (safest default given the historical example scripts).
+ */
+const BrollModelSchema = z
+  .string()
+  .default('higgsfield')
+  .transform((v): BrollModelId => {
+    if (v.startsWith('higgsfield')) return 'higgsfield';
+    if ((BROLL_MODEL_IDS as readonly string[]).includes(v)) return v as BrollModelId;
+    return 'higgsfield';
+  });
+
 export const ShotSchema = z.object({
   type: z.enum(['speak', 'broll_only']),
   text: z.string().optional(),
   broll: z
     .object({
       prompt: z.string(),
-      model: z.string().default('higgsfield/photodump'),
+      model: BrollModelSchema,
       duration: z.number().default(4),
       use_character_ref: z.boolean().default(true),
     })

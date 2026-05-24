@@ -2,10 +2,17 @@ import { defineConfig } from 'vitest/config';
 import path from 'node:path';
 
 export default defineConfig({
+  esbuild: {
+    jsx: 'automatic',
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),
     },
+  },
+  test: {
+    environment: 'happy-dom',
+    setupFiles: ['./tests/setup.ts'],
   },
   ssr: {
     // @hyperframes/core ships ESM with extensionless internal imports — Node ESM

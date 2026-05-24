@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { CompositionPreview } from '@/components/CompositionPreview';
-import type { Script } from '@/lib/types';
+import ShotList from '@/components/ShotList';
+import type { Script, Shot, BrollModelId } from '@/lib/types';
+import { ShotSchema } from '@/lib/types';
 
 const STEPS = ['script', 'audio', 'video', 'transcribe', 'compose', 'render'] as const;
 type Step = (typeof STEPS)[number];
@@ -48,10 +50,55 @@ const EXAMPLE_SCRIPT = {
   ],
 };
 
+/** Coerce one of the four canonical model ids from any legacy string. */
+function normalizeModel(v: unknown): BrollModelId {
+  if (typeof v !== 'string') return 'higgsfield';
+  if (v.startsWith('higgsfield')) return 'higgsfield';
+  if (v === 'kling' || v === 'runway' || v === 'veo') return v;
+  return 'higgsfield';
+}
+
+/** Parse a raw script payload into a typed `Shot[]`, normalizing legacy fields. */
+function shotsFromRaw(obj: unknown): Shot[] {
+  if (!obj || typeof obj !== 'object') return [];
+  const rawShots = (obj as { shots?: unknown }).shots;
+  if (!Array.isArray(rawShots)) return [];
+  const out: Shot[] = [];
+  for (const r of rawShots) {
+    if (!r || typeof r !== 'object') continue;
+    const src = r as Record<string, unknown>;
+    const srcBroll = (src.broll ?? {}) as Record<string, unknown>;
+    const candidate = {
+      type: src.type,
+      text: src.text,
+      broll: src.broll
+        ? {
+            prompt: srcBroll.prompt ?? '',
+            model: normalizeModel(srcBroll.model),
+            duration: typeof srcBroll.duration === 'number' ? srcBroll.duration : 4,
+            use_character_ref: srcBroll.use_character_ref !== false,
+          }
+        : undefined,
+      caption_style: src.caption_style,
+    };
+    const parsed = ShotSchema.safeParse(candidate);
+    if (parsed.success) out.push(parsed.data);
+  }
+  return out;
+}
+
 export default function GeneratePage() {
   const [inputMode, setInputMode] = useState<'prompt' | 'script'>('prompt');
+  const [scriptSubTab, setScriptSubTab] = useState<'visual' | 'json'>('visual');
   const [prompt, setPrompt] = useState('Reel de 30s presentándome y lo que hago con IA');
   const [scriptJson, setScriptJson] = useState(JSON.stringify(EXAMPLE_SCRIPT, null, 2));
+  const [shots, setShots] = useState<Shot[]>(() => shotsFromRaw(EXAMPLE_SCRIPT));
+  const [scriptFormat, setScriptFormat] = useState<Script['format']>('9:16');
+  const [scriptLanguage, setScriptLanguage] = useState<string>('es-AR');
+  // Tracks whether the most-recent state change came from the visual editor
+  // (true) or the JSON textarea (false). Used to skip the redundant sync
+  // effect that would otherwise rewrite the editor the user is typing into.
+  const lastSourceWasVisual = useRef(false);
   const [scriptError, setScriptError] = useState<string | null>(null);
   const [mode, setMode] = useState<'class' | 'reel-avatar' | 'reel-broll'>('reel-broll');
   const [duration, setDuration] = useState(30);
@@ -61,6 +108,38 @@ export default function GeneratePage() {
   const [error, setError] = useState<string | null>(null);
   const [estimate, setEstimate] = useState<any>(null);
   const router = useRouter();
+
+  // Apply changes from the visual editor: update the shots state AND
+  // regenerate the JSON textarea so the JSON tab stays in sync.
+  const applyVisualShots = (nextShots: Shot[]) => {
+    lastSourceWasVisual.current = true;
+    setShots(nextShots);
+    setScriptJson(
+      JSON.stringify({ format: scriptFormat, language: scriptLanguage, shots: nextShots }, null, 2),
+    );
+    setScriptError(null);
+  };
+
+  // Apply changes from the JSON textarea: update the raw JSON AND try to
+  // parse it back into typed shots so the visual editor stays in sync. Parse
+  // failures are swallowed (validateScript surfaces them on blur).
+  const applyJsonEdit = (next: string) => {
+    setScriptJson(next);
+    setScriptError(null);
+    if (lastSourceWasVisual.current) {
+      lastSourceWasVisual.current = false;
+      return;
+    }
+    try {
+      const obj = JSON.parse(next) as { format?: Script['format']; language?: string };
+      const nextShots = shotsFromRaw(obj);
+      if (nextShots.length > 0) setShots(nextShots);
+      if (obj.format) setScriptFormat(obj.format);
+      if (typeof obj.language === 'string') setScriptLanguage(obj.language);
+    } catch {
+      // ignore — surfaced via validateScript on blur
+    }
+  };
 
   useEffect(() => {
     fetch('/api/estimate', {
@@ -95,7 +174,11 @@ export default function GeneratePage() {
   };
 
   const loadExample = () => {
+    lastSourceWasVisual.current = false;
     setScriptJson(JSON.stringify(EXAMPLE_SCRIPT, null, 2));
+    setShots(shotsFromRaw(EXAMPLE_SCRIPT));
+    setScriptFormat('9:16');
+    setScriptLanguage('es-AR');
     setScriptError(null);
   };
 
@@ -154,14 +237,9 @@ export default function GeneratePage() {
   // handles that on blur. Null = preview pane shows the empty state.
   const parsedScriptForPreview = useMemo<Pick<Script, 'format' | 'shots'> | null>(() => {
     if (inputMode !== 'script') return null;
-    try {
-      const obj = JSON.parse(scriptJson) as { format?: Script['format']; shots?: unknown };
-      if (!Array.isArray(obj.shots) || obj.shots.length === 0) return null;
-      return { format: obj.format ?? '9:16', shots: obj.shots as Script['shots'] };
-    } catch {
-      return null;
-    }
-  }, [inputMode, scriptJson]);
+    if (shots.length === 0) return null;
+    return { format: scriptFormat, shots };
+  }, [inputMode, shots, scriptFormat]);
 
   const showPreview = inputMode === 'script';
 
@@ -208,26 +286,54 @@ export default function GeneratePage() {
             </p>
           </div>
         ) : (
-          <div>
-            <div className="flex justify-between items-center mb-1.5">
-              <label className="label !mb-0">Script JSON</label>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <div className="flex gap-1 p-1 bg-ink-800 rounded-lg w-fit">
+                <button
+                  type="button"
+                  onClick={() => setScriptSubTab('visual')}
+                  className={`px-3 py-1 rounded-md text-xs transition-colors ${
+                    scriptSubTab === 'visual' ? 'bg-accent-500 text-white' : 'text-ink-500 hover:text-white'
+                  }`}
+                  disabled={running}
+                >
+                  Visual
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScriptSubTab('json')}
+                  className={`px-3 py-1 rounded-md text-xs transition-colors ${
+                    scriptSubTab === 'json' ? 'bg-accent-500 text-white' : 'text-ink-500 hover:text-white'
+                  }`}
+                  disabled={running}
+                >
+                  JSON
+                </button>
+              </div>
               <button onClick={loadExample} className="text-xs text-accent-400 hover:underline" disabled={running}>
                 Cargar ejemplo
               </button>
             </div>
-            <textarea
-              className="input font-mono text-xs min-h-[280px]"
-              value={scriptJson}
-              onChange={(e) => { setScriptJson(e.target.value); setScriptError(null); }}
-              onBlur={(e) => validateScript(e.target.value)}
-              disabled={running}
-              spellCheck={false}
-            />
-            {scriptError && <p className="text-xs text-rose-400 mt-1">{scriptError}</p>}
-            <p className="text-xs text-ink-500 mt-1">
-              Saltea el script-builder de Claude. La duración total se calcula desde la suma de cada shot.
-              Schema: <code className="text-accent-400">{`{format, language, shots: [{type, text, broll, caption_style}]}`}</code>
-            </p>
+
+            {scriptSubTab === 'visual' ? (
+              <ShotList shots={shots} onChange={applyVisualShots} />
+            ) : (
+              <div>
+                <textarea
+                  className="input font-mono text-xs min-h-[280px]"
+                  value={scriptJson}
+                  onChange={(e) => applyJsonEdit(e.target.value)}
+                  onBlur={(e) => validateScript(e.target.value)}
+                  disabled={running}
+                  spellCheck={false}
+                />
+                {scriptError && <p className="text-xs text-rose-400 mt-1">{scriptError}</p>}
+                <p className="text-xs text-ink-500 mt-1">
+                  La duración total se calcula desde la suma de cada shot.
+                  Schema: <code className="text-accent-400">{`{format, language, shots: [{type, text, broll, caption_style}]}`}</code>
+                </p>
+              </div>
+            )}
           </div>
         )}
 

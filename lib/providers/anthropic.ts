@@ -90,19 +90,19 @@ function mockScript(opts: { prompt: string; mode: string; duration: number; vide
       {
         type: 'speak',
         text: `[MOCK] Hook sobre: ${opts.prompt.slice(0, 60)}`,
-        broll: { prompt: 'Person at modern desk with laptop, cinematic dolly-in, warm light', model: 'mock', duration: 4, use_character_ref: true },
+        broll: { prompt: 'Person at modern desk with laptop, cinematic dolly-in, warm light', model: 'higgsfield', duration: 4, use_character_ref: true },
         caption_style: 'pill-karaoke',
       },
       {
         type: 'speak',
         text: '[MOCK] Desarrollo del punto principal.',
-        broll: { prompt: 'Person walking in sunlit hallway, slight slow motion', model: 'mock', duration: 4, use_character_ref: true },
+        broll: { prompt: 'Person walking in sunlit hallway, slight slow motion', model: 'higgsfield', duration: 4, use_character_ref: true },
         caption_style: 'pill-karaoke',
       },
       {
         type: 'speak',
         text: '[MOCK] CTA al final.',
-        broll: { prompt: 'Person smiling at camera, close up, natural light', model: 'mock', duration: 5, use_character_ref: true },
+        broll: { prompt: 'Person smiling at camera, close up, natural light', model: 'higgsfield', duration: 5, use_character_ref: true },
         caption_style: 'kinetic-slam',
       },
     ],

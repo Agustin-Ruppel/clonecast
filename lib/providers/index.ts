@@ -1,5 +1,6 @@
 export * from './anthropic';
 export * from './elevenlabs';
+export * from './cartesia';
 export * from './openai';
 export * from './heygen';
 export * from './higgsfield';
@@ -9,6 +10,7 @@ export * from './hyperframes';
 import { validateAnthropicKey } from './anthropic';
 import { validateOpenAIKey } from './openai';
 import { validateElevenLabsKey } from './elevenlabs';
+import { validateCartesiaKey } from './cartesia';
 import { validateHeyGenKey } from './heygen';
 import { validateHiggsfieldKey } from './higgsfield';
 import { validateFalKey } from './fal';
@@ -18,6 +20,7 @@ export const validators: Record<ProviderKey, (key: string) => Promise<{ ok: bool
   ANTHROPIC_API_KEY: validateAnthropicKey,
   OPENAI_API_KEY: validateOpenAIKey,
   ELEVENLABS_API_KEY: validateElevenLabsKey,
+  CARTESIA_API_KEY: validateCartesiaKey,
   HEYGEN_API_KEY: validateHeyGenKey,
   HIGGSFIELD_API_KEY: validateHiggsfieldKey,
   FAL_API_KEY: validateFalKey,

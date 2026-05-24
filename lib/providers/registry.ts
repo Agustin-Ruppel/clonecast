@@ -1,6 +1,7 @@
 import { isMockMode } from '../core/secrets';
 import type { ProviderId, VideoProvider, VoiceProvider } from './contracts';
 import { mockVideoProvider, mockVoiceProvider } from './_mocks';
+import { cartesiaVoiceProvider } from './cartesia';
 
 const VIDEO_IDS: ReadonlyArray<ProviderId> = ['higgsfield', 'kling', 'runway', 'veo', 'heygen', 'mock'];
 const VOICE_IDS: ReadonlyArray<ProviderId> = ['elevenlabs', 'cartesia', 'mock'];
@@ -25,7 +26,10 @@ export function getVoiceProvider(id: ProviderId): VoiceProvider {
   if (isMockMode()) {
     return mockVoiceProvider(id);
   }
-  // Phase B will adapt real adapters (elevenlabs, cartesia) to the VoiceProvider contract.
+  if (id === 'cartesia') {
+    return cartesiaVoiceProvider;
+  }
+  // Phase B will adapt remaining real adapters (elevenlabs) to the VoiceProvider contract.
   throw new Error(
     `Real voice provider for ${id} not yet adapted to VoiceProvider contract — see Phase B`
   );

@@ -92,6 +92,7 @@ export const ProviderKeys = [
   'ANTHROPIC_API_KEY',
   'OPENAI_API_KEY',
   'ELEVENLABS_API_KEY',
+  'CARTESIA_API_KEY',
   'HEYGEN_API_KEY',
   'HIGGSFIELD_API_KEY',
   'FAL_API_KEY',

@@ -70,6 +70,9 @@ export const CAPTION_STYLES: CaptionStyleMeta[] = [
 
 export const CAPTION_STYLE_IDS = CAPTION_STYLES.map((s) => s.id) as [CaptionStyleId, ...CaptionStyleId[]];
 
+import { z } from 'zod';
+export const CaptionStyleIdSchema = z.enum(CAPTION_STYLE_IDS);
+
 /** Default style when none is specified on a shot. */
 export const DEFAULT_CAPTION_STYLE: CaptionStyleId = 'pill-karaoke';
 

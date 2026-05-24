@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { AvatarPicker } from '@/components/AvatarPicker';
+import type { Preset } from '@/lib/presets';
 
 export type WriteFormat = '9:16' | '16:9' | '1:1';
 export type WriteMode = 'auto' | 'avatar' | 'broll-only' | 'mixed';
@@ -35,11 +36,29 @@ export function WriteStep({ initialGuion = '', onSubmit }: WriteStepProps) {
   const [forceMode, setForceMode] = useState<'auto' | 'brief' | 'guion'>('auto');
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [presets, setPresets] = useState<Preset[]>([]);
+  const [presetsLoading, setPresetsLoading] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setPlaceholderIdx((i) => (i + 1) % PLACEHOLDERS.length), 5000);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    if (!showTemplates || presets.length > 0) return;
+    setPresetsLoading(true);
+    fetch('/api/presets')
+      .then((r) => r.json())
+      .then((data) => setPresets(Array.isArray(data) ? (data as Preset[]) : []))
+      .catch(() => setPresets([]))
+      .finally(() => setPresetsLoading(false));
+  }, [showTemplates, presets.length]);
+
+  const applyPreset = (p: Preset) => {
+    if (p.hint_prompt_template) setText(p.hint_prompt_template);
+    if (p.format === '9:16' || p.format === '16:9' || p.format === '1:1') setFormat(p.format);
+    setShowTemplates(false);
+  };
 
   const detected: 'brief' | 'guion' = useMemo(() => {
     if (forceMode === 'brief' || forceMode === 'guion') return forceMode;
@@ -97,8 +116,28 @@ export function WriteStep({ initialGuion = '', onSubmit }: WriteStepProps) {
             {showTemplates ? '▾' : '‹'} Plantillas
           </button>
           {showTemplates && (
-            <div className="mt-2 p-3 rounded-lg bg-ink-950 border border-ink-800 text-xs text-ink-500">
-              <p className="mb-2">Las plantillas vienen en una próxima iteración. Mientras tanto, escribí libre.</p>
+            <div className="mt-2 p-3 rounded-lg bg-ink-950 border border-ink-800">
+              {presetsLoading && <p className="text-xs text-ink-500">Cargando plantillas…</p>}
+              {!presetsLoading && presets.length === 0 && (
+                <p className="text-xs text-ink-500">No hay plantillas disponibles.</p>
+              )}
+              {!presetsLoading && presets.length > 0 && (
+                <ul className="space-y-1">
+                  {presets.map((p) => (
+                    <li key={p.id}>
+                      <button
+                        type="button"
+                        onClick={() => applyPreset(p)}
+                        className="w-full text-left px-2 py-1.5 rounded hover:bg-ink-800 text-xs"
+                        data-testid={`preset-${p.id}`}
+                      >
+                        <div className="font-medium text-white">{p.label}</div>
+                        {p.description && <div className="text-ink-500 mt-0.5">{p.description}</div>}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
         </div>

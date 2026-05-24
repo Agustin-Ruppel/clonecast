@@ -2,7 +2,7 @@ import fs from 'fs-extra';
 import path from 'node:path';
 import { execa } from 'execa';
 import { isMockMode } from '../core/secrets';
-import type { Script } from '../types';
+import type { Script, BrandPack } from '../types';
 import type { WordTimestamp } from './openai';
 
 export interface ComposeInput {
@@ -11,6 +11,7 @@ export interface ComposeInput {
   videoPaths: string[];
   captions: WordTimestamp[][];
   outputDir: string;
+  brand?: BrandPack | null;
 }
 
 export async function composeHTML(input: ComposeInput): Promise<string> {
@@ -33,20 +34,35 @@ export async function renderVideo(htmlPath: string, outputMp4: string): Promise<
 }
 
 function renderTemplate(input: ComposeInput, dim: { w: number; h: number }): string {
-  const { script, videoPaths, captions } = input;
+  const { script, videoPaths, captions, brand } = input;
+  const primary = brand?.primary_color ?? '#7C5CFF';
+  const secondary = brand?.secondary_color ?? '#0EA5E9';
+  const font = brand?.font_family ?? 'Inter, system-ui, sans-serif';
+
   let elapsed = 0;
   const layers = script.shots.map((shot, i) => {
     const dur = shot.broll?.duration ?? 4;
     const videoTag = `<video src="${videoPaths[i] ?? ''}" data-start="${elapsed}" data-duration="${dur}" muted></video>`;
+    const style = shot.caption_style || 'pill-karaoke';
     const captionSpans = (captions[i] ?? [])
       .map(
         (w) =>
-          `<span class="cap" data-start="${elapsed + w.start}" data-duration="${w.end - w.start}">${escapeHtml(w.word)}</span>`,
+          `<span class="cap cap--${style}" data-start="${elapsed + w.start}" data-duration="${w.end - w.start}">${escapeHtml(w.word)}</span>`,
       )
       .join('');
     elapsed += dur;
-    return videoTag + `<div class="captions" data-style="${shot.caption_style}">${captionSpans}</div>`;
+    return videoTag + `<div class="captions captions--${style}">${captionSpans}</div>`;
   }).join('\n');
+
+  const lowerThird = brand?.display_name
+    ? `<div class="lower-third" data-start="0" data-duration="3">
+         <div class="accent-bar"></div>
+         <div class="lt-text">
+           <div class="lt-name">${escapeHtml(brand.display_name)}</div>
+           ${brand.title ? `<div class="lt-title">${escapeHtml(brand.title)}</div>` : ''}
+         </div>
+       </div>`
+    : '';
 
   return `<!DOCTYPE html>
 <html>
@@ -54,17 +70,32 @@ function renderTemplate(input: ComposeInput, dim: { w: number; h: number }): str
   <meta charset="utf-8" />
   <title>${script.video_id}</title>
   <style>
-    html, body { margin: 0; padding: 0; background: black; width: ${dim.w}px; height: ${dim.h}px; overflow: hidden; }
+    :root { --primary: ${primary}; --secondary: ${secondary}; --font: ${font}; }
+    html, body { margin: 0; padding: 0; background: black; width: ${dim.w}px; height: ${dim.h}px; overflow: hidden; font-family: var(--font); }
     video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-    .captions { position: absolute; bottom: 8%; left: 0; right: 0; text-align: center;
-                font-family: system-ui, sans-serif; font-weight: 800; font-size: 64px;
-                color: white; text-shadow: 0 4px 16px rgba(0,0,0,0.8); padding: 0 40px; }
-    .cap { display: inline-block; margin: 0 8px; }
-    .cap[data-style="pill-karaoke"] { background: #7C5CFF; padding: 4px 16px; border-radius: 999px; }
+    .captions { position: absolute; bottom: 12%; left: 0; right: 0; text-align: center;
+                font-weight: 800; font-size: 64px; color: white; padding: 0 40px;
+                line-height: 1.2; text-shadow: 0 4px 16px rgba(0,0,0,0.8); }
+    .cap { display: inline-block; margin: 0 6px; padding: 4px 10px; }
+
+    /* Caption variants */
+    .cap--pill-karaoke { background: var(--primary); border-radius: 999px; padding: 6px 18px; box-shadow: 0 8px 24px rgba(124,92,255,0.4); }
+    .cap--highlight { background: linear-gradient(180deg, transparent 60%, var(--primary) 60%); padding: 0 4px; border-radius: 4px; }
+    .cap--kinetic-slam { font-size: 84px; text-transform: uppercase; -webkit-text-stroke: 4px black; letter-spacing: -2px; }
+    .cap--emoji-pop { background: rgba(0,0,0,0.7); border-radius: 8px; font-size: 70px; }
+    .cap--gradient-fill { background: linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .cap--neon-glow { color: var(--primary); text-shadow: 0 0 12px var(--primary), 0 0 24px var(--primary); }
+
+    /* Lower third */
+    .lower-third { position: absolute; bottom: 6%; left: 5%; display: flex; align-items: center; gap: 16px; }
+    .accent-bar { width: 6px; height: 56px; background: var(--primary); border-radius: 3px; }
+    .lt-name { color: white; font-size: 32px; font-weight: 800; text-shadow: 0 2px 8px rgba(0,0,0,0.8); }
+    .lt-title { color: rgba(255,255,255,0.7); font-size: 20px; }
   </style>
 </head>
 <body>
   ${layers}
+  ${lowerThird}
 </body>
 </html>`;
 }

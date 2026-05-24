@@ -95,7 +95,9 @@ export async function runPipeline(opts: {
     opts.onProgress('compose', 0, 'Composing video (Hyperframes)...');
     job.steps.compose.status = 'running';
     await saveJobState(job);
-    const htmlPath = await composeHTML({ script, audioPaths, videoPaths, captions, outputDir: tmpDir });
+    const brandPath = path.join(process.cwd(), 'assets', 'brand', 'brand.json');
+    const brand = (await fs.pathExists(brandPath)) ? await fs.readJson(brandPath) : null;
+    const htmlPath = await composeHTML({ script, audioPaths, videoPaths, captions, outputDir: tmpDir, brand });
     job.steps.compose = { status: 'done' };
     opts.onProgress('compose', 100);
 

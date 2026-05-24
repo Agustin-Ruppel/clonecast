@@ -1,6 +1,7 @@
 import type { Kysely } from 'kysely';
 import { getDb } from './connection';
 import { up as up001 } from './migrations/001-initial';
+import { up as up002 } from './migrations/002-add-heygen-video-id';
 import type { Database } from './types';
 
 interface Migration {
@@ -8,7 +9,10 @@ interface Migration {
   up: (db: Kysely<unknown>) => Promise<void>;
 }
 
-const MIGRATIONS: Migration[] = [{ version: 1, up: up001 }];
+const MIGRATIONS: Migration[] = [
+  { version: 1, up: up001 },
+  { version: 2, up: up002 },
+];
 
 export async function getSchemaVersion(): Promise<number> {
   const db = await getDb();

@@ -7,6 +7,7 @@ import { isTestFixtureMode } from '../core/secrets';
 import { getStorage } from '../storage';
 import type { JobState, CreatorProfile, BrandPack } from '../types';
 import { mergeBrand } from './brand-merge';
+import { pollUntilDone } from './poll';
 
 import type { Script } from '../types';
 
@@ -87,11 +88,14 @@ export async function runPipeline(opts: {
         videoPaths.push(polled.video_url || '');
       } else {
         const dims = aspect === '9:16' ? { width: 1080, height: 1920 } : { width: 1920, height: 1080 };
+        const publicUrl = process.env.CLONECAST_PUBLIC_URL;
+        const callbackUrl = publicUrl ? `${publicUrl.replace(/\/$/, '')}/api/heygen/webhook` : undefined;
         const job = await createAvatarVideo({
           avatarId: process.env.HEYGEN_AVATAR_ID || 'mock',
           voiceId,
           text: shot.text!,
           dimensions: dims,
+          callbackUrl,
         });
         const polled = await pollUntilDone(() => pollAvatarVideo(job.video_id));
         videoPaths.push(polled.video_url || '');
@@ -163,13 +167,3 @@ export async function runPipeline(opts: {
   }
 }
 
-async function pollUntilDone<T extends { status: string; video_url?: string }>(fn: () => Promise<T>): Promise<T> {
-  if (isTestFixtureMode()) return fn();
-  for (let i = 0; i < 60; i++) {
-    const r = await fn();
-    if (r.status === 'completed' || r.status === 'COMPLETED') return r;
-    if (r.status === 'failed' || r.status === 'FAILED') throw new Error('Job failed');
-    await new Promise((r) => setTimeout(r, 5000));
-  }
-  throw new Error('Timeout polling job');
-}

@@ -23,6 +23,8 @@ export interface JobsTable {
   cost_usd: number | null;
   error: string | null;
   steps_json: string;
+  /** Upstream provider job id (e.g. HeyGen video_id) for webhook lookup. */
+  provider_job_id: string | null;
 }
 
 export interface CreatorProfileTable {

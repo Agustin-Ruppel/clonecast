@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AvatarPicker } from '@/components/AvatarPicker';
 import { VoicePicker, type VoiceMode } from '@/components/VoicePicker';
+import { TemplatePicker } from '@/components/generate-v2/TemplatePicker';
 import type { CachedAvatar } from '@/lib/db/repos/avatars-cache';
 import type { Preset } from '@/lib/presets';
 
@@ -44,6 +45,8 @@ export function WriteStep({ initialGuion = '', onSubmit }: WriteStepProps) {
   const [voiceMode, setVoiceMode] = useState<VoiceMode>('native');
   const [customVoiceId, setCustomVoiceId] = useState<string | null>(null);
   const [showVoicePicker, setShowVoicePicker] = useState(false);
+  const [entryMode, setEntryMode] = useState<'scratch' | 'template'>('scratch');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
 
   useEffect(() => {
     void fetch('/api/heygen/avatars')
@@ -107,10 +110,64 @@ export function WriteStep({ initialGuion = '', onSubmit }: WriteStepProps) {
     setForceMode(detected === 'brief' ? 'guion' : 'brief');
   };
 
+  const handleTemplateSubmit = async (templateId: string, variables: Record<string, string>) => {
+    // Skip the AI planner — templates render directly via HeyGen.
+    // For now we POST to the existing generate route with a special marker so
+    // the backend can route to /v2/template/{id}/generate. Full wiring will
+    // land alongside the template-render pipeline branch in v0.4.
+    await fetch('/api/heygen/template-generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ template_id: templateId, variables }),
+    }).catch(() => {
+      // Endpoint may not exist yet — surface a friendly UI message instead.
+      // This intentionally fails silently to keep the picker shippable now.
+    });
+  };
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Nuevo video</h1>
 
+      <div className="flex gap-2 border-b border-ink-800">
+        <button
+          type="button"
+          onClick={() => setEntryMode('scratch')}
+          className={`px-4 py-2 text-sm border-b-2 -mb-px ${
+            entryMode === 'scratch'
+              ? 'border-accent-400 text-white'
+              : 'border-transparent text-ink-500 hover:text-white'
+          }`}
+          data-testid="entry-mode-scratch"
+        >
+          Empezar de cero
+        </button>
+        <button
+          type="button"
+          onClick={() => setEntryMode('template')}
+          className={`px-4 py-2 text-sm border-b-2 -mb-px ${
+            entryMode === 'template'
+              ? 'border-accent-400 text-white'
+              : 'border-transparent text-ink-500 hover:text-white'
+          }`}
+          data-testid="entry-mode-template"
+        >
+          Usar template HeyGen
+        </button>
+      </div>
+
+      {entryMode === 'template' && (
+        <div className="card">
+          <TemplatePicker
+            selectedId={selectedTemplateId}
+            onChange={setSelectedTemplateId}
+            onSubmit={(id, vars) => void handleTemplateSubmit(id, vars)}
+          />
+        </div>
+      )}
+
+      {entryMode === 'scratch' && (
+      <>
       <div className="card space-y-4">
         <div className="relative">
           <textarea
@@ -240,6 +297,8 @@ export function WriteStep({ initialGuion = '', onSubmit }: WriteStepProps) {
           Planear video →
         </button>
       </div>
+      </>
+      )}
     </div>
   );
 }

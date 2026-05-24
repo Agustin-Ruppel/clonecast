@@ -4,7 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { r2StorageAdapter } from '@/lib/storage/r2';
 
-beforeEach(() => { process.env.CLONECAST_MOCK = 'true'; });
+beforeEach(() => { process.env.CLONECAST_TEST_FIXTURES = 'true'; });
 
 describe('r2StorageAdapter (mock mode)', () => {
   it('upload returns r2://mock-bucket/<keyPrefix>/<basename> without network', async () => {
@@ -38,7 +38,7 @@ describe('r2StorageAdapter (mock mode)', () => {
   });
 
   it.skipIf(process.env.RUN_REAL_R2 !== 'true')('uploads to a real R2 bucket', async () => {
-    process.env.CLONECAST_MOCK = 'false';
+    process.env.CLONECAST_TEST_FIXTURES = 'false';
     const tmp = path.join(os.tmpdir(), `cc-r2-real-${Date.now()}.txt`);
     await fs.writeFile(tmp, 'real');
     const url = await r2StorageAdapter.upload(tmp, { keyPrefix: 'tests' });

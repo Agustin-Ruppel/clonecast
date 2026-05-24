@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { getVideoProvider, getVoiceProvider } from '@/lib/providers/registry';
 
-beforeEach(() => { process.env.CLONECAST_MOCK = 'true'; });
+beforeEach(() => { process.env.CLONECAST_TEST_FIXTURES = 'true'; });
 
 describe('registry', () => {
   it('returns a mock VideoProvider by id when in mock mode', async () => {

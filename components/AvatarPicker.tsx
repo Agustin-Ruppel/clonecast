@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CachedAvatar } from '@/lib/db/repos/avatars-cache';
 
+type AvatarSource = 'real' | 'unconfigured';
+
 interface ApiResponse {
   avatars: CachedAvatar[];
   cached: boolean;
-  mock?: boolean;
-  source?: 'real' | 'mock';
+  source?: AvatarSource;
   error?: string;
 }
 
@@ -59,7 +60,7 @@ export function AvatarPicker({ selected, onChange, allowNone }: AvatarPickerProp
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<FilterId>('all');
   const [recent, setRecent] = useState<string[]>([]);
-  const [source, setSource] = useState<'real' | 'mock' | null>(null);
+  const [source, setSource] = useState<AvatarSource | null>(null);
 
   // Debounce search input by 200ms
   useEffect(() => {
@@ -80,7 +81,7 @@ export function AvatarPicker({ selected, onChange, allowNone }: AvatarPickerProp
       const data = (await res.json()) as ApiResponse;
       if (data.error) setError(data.error);
       setAvatars(Array.isArray(data.avatars) ? data.avatars : []);
-      setSource(data.source ?? (data.mock ? 'mock' : null));
+      setSource(data.source ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'fetch failed');
       setAvatars([]);
@@ -145,19 +146,27 @@ export function AvatarPicker({ selected, onChange, allowNone }: AvatarPickerProp
   }
 
   if (avatars.length === 0) {
+    const unconfigured = source === 'unconfigured';
     return (
-      <div className="card space-y-2">
-        <p className="text-sm">No avatars found.</p>
-        <p className="text-xs text-ink-500">
-          Configurá tu <code>HEYGEN_API_KEY</code> en{' '}
-          <a href="/settings" className="text-accent-400 underline">
-            Settings
-          </a>{' '}
-          para ver tus avatars.
+      <div className="card space-y-3 border-amber-500/30 bg-amber-500/5">
+        <p className="text-sm font-medium">
+          {unconfigured ? 'HeyGen no está configurado' : 'No avatars found'}
         </p>
-        <button type="button" onClick={() => void load(true)} className="btn-secondary mt-2">
-          ↻ Sync
-        </button>
+        <p className="text-xs text-ink-500">
+          {unconfigured
+            ? 'Necesitás tu propia HEYGEN_API_KEY para ver tus avatars. Conseguila en app.heygen.com → Settings → API.'
+            : 'No encontramos avatars en tu cuenta de HeyGen. Probá refrescar.'}
+        </p>
+        <div className="flex gap-2">
+          {unconfigured && (
+            <a href="/settings" className="btn-primary !py-1 !text-xs">
+              Configurar HEYGEN_API_KEY →
+            </a>
+          )}
+          <button type="button" onClick={() => void load(true)} className="btn-secondary !py-1 !text-xs">
+            ↻ Sync
+          </button>
+        </div>
       </div>
     );
   }
@@ -178,11 +187,6 @@ export function AvatarPicker({ selected, onChange, allowNone }: AvatarPickerProp
       <div className="flex items-center justify-between gap-3">
         {source === 'real' && (
           <span className="pill-success inline-block text-xs">Conectado a tu cuenta HeyGen</span>
-        )}
-        {source === 'mock' && (
-          <span className="pill-warning inline-block text-xs">
-            Mostrando ejemplos — configurá HEYGEN_API_KEY en Settings
-          </span>
         )}
         <button
           type="button"

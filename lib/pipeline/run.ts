@@ -3,7 +3,7 @@ import path from 'node:path';
 import { buildScript, synthesize, transcribe, createAvatarVideo, pollAvatarVideo, generateBroll, pollBroll, composeHTML, renderVideo, preprocessAsset } from '../providers';
 import type { WordTimestamp } from '../providers/openai';
 import { saveJobState } from '../core/state';
-import { isMockMode } from '../core/secrets';
+import { isTestFixtureMode } from '../core/secrets';
 import { getStorage } from '../storage';
 import type { JobState, CreatorProfile, BrandPack } from '../types';
 import { mergeBrand } from './brand-merge';
@@ -151,7 +151,7 @@ export async function runPipeline(opts: {
       job.output_url = await storage.upload(outputMp4, { keyPrefix: 'outputs', contentType: 'video/mp4' });
     }
     job.status = 'done';
-    opts.onProgress('render', 100, isMockMode() ? '✓ Done (mock mode — no real video rendered)' : '✓ Done');
+    opts.onProgress('render', 100, isTestFixtureMode() ? '✓ Done (mock mode — no real video rendered)' : '✓ Done');
 
     await saveJobState(job);
     return job;
@@ -164,7 +164,7 @@ export async function runPipeline(opts: {
 }
 
 async function pollUntilDone<T extends { status: string; video_url?: string }>(fn: () => Promise<T>): Promise<T> {
-  if (isMockMode()) return fn();
+  if (isTestFixtureMode()) return fn();
   for (let i = 0; i < 60; i++) {
     const r = await fn();
     if (r.status === 'completed' || r.status === 'COMPLETED') return r;

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { getSetupStatus, listJobs } from '@/lib/core/state';
 import { ProviderKeys } from '@/lib/types';
-import { getSecret, isMockMode, mask } from '@/lib/core/secrets';
+import { getSecret, mask } from '@/lib/core/secrets';
 import { Disclosure } from '@/components/ui/Disclosure';
 import { Empty } from '@/components/ui/Empty';
 
@@ -32,7 +32,9 @@ export default async function DashboardPage() {
             {status.creatorName ? `Hola, ${status.creatorName}` : 'Bienvenido a Clonecast'}
           </h1>
           <p className="text-ink-500">
-            {isMockMode() ? 'Mock mode activo · podés probar sin gastar' : 'Live mode · APIs reales conectadas'}
+            {status.keysConfigured >= 3
+              ? 'APIs reales conectadas · listo para generar'
+              : 'Configurá tus API keys para empezar'}
           </p>
         </div>
         <Link href="/generate" className={`btn-primary ${!status.complete ? 'opacity-50 pointer-events-none' : ''}`}>
@@ -46,7 +48,7 @@ export default async function DashboardPage() {
 
       <section className="grid grid-cols-4 gap-4">
         <Stat label="Videos generados" value={String(jobs.length)} sublabel={`${doneJobs} completados`} />
-        <Stat label="Costo acumulado" value={`$${totalCost.toFixed(2)}`} sublabel={isMockMode() ? '(mock — sin cargo real)' : 'USD'} />
+        <Stat label="Costo acumulado" value={`$${totalCost.toFixed(2)}`} sublabel="USD" />
         <Stat label="API keys" value={`${status.keysConfigured}/6`} sublabel={status.keysConfigured >= 3 ? 'Suficiente para arrancar' : 'Falta configurar'} variant={status.keysConfigured >= 3 ? 'success' : 'warning'} />
         <Stat label="Character pack" value={status.characterPackReady ? 'OK' : '—'} sublabel={status.characterPackReady ? 'Pack listo' : 'Subí fotos'} variant={status.characterPackReady ? 'success' : 'warning'} />
       </section>

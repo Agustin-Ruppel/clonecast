@@ -14,14 +14,14 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { preprocessAsset } from '@/lib/providers/hyperframes';
 
 describe('preprocessAsset (integration)', () => {
-  const originalMock = process.env.CLONECAST_MOCK;
+  const originalMock = process.env.CLONECAST_TEST_FIXTURES;
 
   beforeEach(() => {
-    process.env.CLONECAST_MOCK = 'true';
+    process.env.CLONECAST_TEST_FIXTURES = 'true';
   });
   afterEach(() => {
-    if (originalMock === undefined) delete process.env.CLONECAST_MOCK;
-    else process.env.CLONECAST_MOCK = originalMock;
+    if (originalMock === undefined) delete process.env.CLONECAST_TEST_FIXTURES;
+    else process.env.CLONECAST_TEST_FIXTURES = originalMock;
   });
 
   it('returns an empty array in mock mode for transcribe', async () => {
@@ -41,8 +41,8 @@ describe('preprocessAsset (integration)', () => {
   });
 
   it('throws "not implemented" when not in mock mode and producer lacks the helper', async () => {
-    // isMockMode() returns true unless CLONECAST_MOCK === 'false' — opt out explicitly.
-    process.env.CLONECAST_MOCK = 'false';
+    // isTestFixtureMode() returns true only when CLONECAST_TEST_FIXTURES === 'true' — opt out for this case.
+    process.env.CLONECAST_TEST_FIXTURES = 'false';
     await expect(
       preprocessAsset({ kind: 'transcribe', path: '/tmp/fake.mp3' }),
     ).rejects.toThrow(/not implemented/);

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { validateRunwayKey, runwayVideoProvider } from '@/lib/providers/runway';
 
-beforeEach(() => { process.env.CLONECAST_MOCK = 'true'; });
+beforeEach(() => { process.env.CLONECAST_TEST_FIXTURES = 'true'; });
 
 describe('runway (mock mode)', () => {
   it('validates a key without network', async () => {

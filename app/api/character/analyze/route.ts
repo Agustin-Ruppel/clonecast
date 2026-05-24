@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import fs from 'fs-extra';
 import path from 'node:path';
 import Anthropic from '@anthropic-ai/sdk';
-import { getSecret, isMockMode, preloadSecrets } from '@/lib/core/secrets';
+import { getSecret, isTestFixtureMode, preloadSecrets } from '@/lib/core/secrets';
 import { activateRequestWorkspace } from '@/lib/core/active-workspace';
 import { CharacterPackSchema } from '@/lib/types';
 
@@ -20,7 +20,7 @@ export async function POST() {
     return NextResponse.json({ error: 'Need at least 1 photo' }, { status: 400 });
   }
 
-  if (isMockMode()) {
+  if (isTestFixtureMode()) {
     const mock = CharacterPackSchema.parse({
       name: 'Mock Creator',
       pronouns: 'they/them',
@@ -37,7 +37,12 @@ export async function POST() {
   }
 
   const key = getSecret('ANTHROPIC_API_KEY');
-  if (!key) return NextResponse.json({ error: 'ANTHROPIC_API_KEY not set' }, { status: 400 });
+  if (!key) {
+    return NextResponse.json(
+      { error: 'ANTHROPIC_API_KEY is not configured. Add it in /setup or /settings.' },
+      { status: 400 },
+    );
+  }
 
   const samples = files.slice(0, 6);
   const images = await Promise.all(

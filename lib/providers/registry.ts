@@ -1,4 +1,4 @@
-import { isMockMode } from '../core/secrets';
+import { isTestFixtureMode } from '../core/secrets';
 import type { ProviderId, VideoProvider, VoiceProvider } from './contracts';
 import { mockVideoProvider, mockVoiceProvider } from './_mocks';
 import { cartesiaVoiceProvider } from './cartesia';
@@ -11,7 +11,7 @@ export function getVideoProvider(id: ProviderId): VideoProvider {
   if (!VIDEO_IDS.includes(id)) {
     throw new Error(`Unknown video provider: ${id}`);
   }
-  if (isMockMode()) {
+  if (isTestFixtureMode()) {
     return mockVideoProvider(id);
   }
   if (id === 'runway') {
@@ -27,7 +27,7 @@ export function getVoiceProvider(id: ProviderId): VoiceProvider {
   if (!VOICE_IDS.includes(id)) {
     throw new Error(`Unknown voice provider: ${id}`);
   }
-  if (isMockMode()) {
+  if (isTestFixtureMode()) {
     return mockVoiceProvider(id);
   }
   if (id === 'cartesia') {

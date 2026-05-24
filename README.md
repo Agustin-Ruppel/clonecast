@@ -95,18 +95,6 @@ Una idea en lenguaje natural → un MP4 publicable. Sin abrir editor de video.
 
 ---
 
-## Mock mode (para probar sin gastar)
-
-Por default arranca con `CLONECAST_MOCK=true` en `.env.local`. Eso significa:
-
-- Podés vivir el wizard completo sin keys
-- Podés correr "Generate" y ver el flow end-to-end con responses fake
-- Los outputs son placeholders, no videos reales
-
-Cuando estés listo: editá `.env.local`, poné `CLONECAST_MOCK=false`, y todo se conecta a APIs reales.
-
----
-
 ## Seguridad
 
 - `.env.local` con permisos `600`, **nunca** commiteado
@@ -132,7 +120,7 @@ Ver [docs/05-security.md](docs/05-security.md) para detalles.
 
 ---
 
-## Costos estimados (reales, sin mock)
+## Costos estimados
 
 | Tipo | Duración | Costo aprox |
 |---|---|---|
@@ -140,7 +128,7 @@ Ver [docs/05-security.md](docs/05-security.md) para detalles.
 | Reel sin avatar (sólo B-roll) | 45s | ~$3.00–$5.00 |
 | Clase larga (avatar full) | 30 min | ~$10–$15 |
 
-Mock mode: $0.
+Cada generación se cobra a tu cuenta del proveedor correspondiente.
 
 ---
 
@@ -154,7 +142,6 @@ Mock mode: $0.
 - ✅ Brand Pack config visual
 - ✅ Pipeline end-to-end con SSE de progreso
 - ✅ Providers reales: Anthropic, OpenAI, ElevenLabs, HeyGen, Higgsfield, fal.ai, Hyperframes
-- ✅ Mock mode para probar sin gastar
 - ✅ Library con descarga de outputs
 - ✅ Seguridad: `.env.local` 600, gitignore agresivo, masking de keys
 

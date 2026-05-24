@@ -1,9 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { getSecret, isMockMode } from '../core/secrets';
+import { getSecret, isTestFixtureMode } from '../core/secrets';
 import type { CreatorProfile, Script } from '../types';
 
 export async function validateAnthropicKey(key: string): Promise<{ ok: boolean; error?: string }> {
-  if (isMockMode()) return { ok: true };
+  if (isTestFixtureMode()) return { ok: true };
   try {
     const client = new Anthropic({ apiKey: key });
     await client.messages.create({
@@ -24,7 +24,7 @@ export async function buildScript(opts: {
   videoId: string;
   profile: CreatorProfile | null;
 }): Promise<Script> {
-  if (isMockMode()) {
+  if (isTestFixtureMode()) {
     return mockScript(opts);
   }
   const client = new Anthropic({ apiKey: getSecret('ANTHROPIC_API_KEY')! });

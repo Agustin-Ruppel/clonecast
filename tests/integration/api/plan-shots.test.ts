@@ -3,7 +3,7 @@ import { POST } from '@/app/api/plan/shots/route';
 import { ShotPlanSchema } from '@/lib/planner/types';
 
 beforeEach(() => {
-  process.env.CLONECAST_MOCK = 'true';
+  process.env.CLONECAST_TEST_FIXTURES = 'true';
 });
 
 describe('POST /api/plan/shots', () => {

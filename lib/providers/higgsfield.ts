@@ -1,11 +1,11 @@
 import { request } from 'undici';
-import { getSecret, isMockMode } from '../core/secrets';
+import { getSecret, isTestFixtureMode } from '../core/secrets';
 import type { HiggsfieldPresetId, MotionIntensity } from '../types';
 
 const API_BASE = 'https://api.higgsfield.ai/v1';
 
 export async function validateHiggsfieldKey(key: string): Promise<{ ok: boolean; error?: string }> {
-  if (isMockMode()) return { ok: true };
+  if (isTestFixtureMode()) return { ok: true };
   try {
     const { statusCode } = await request(`${API_BASE}/account`, {
       headers: { Authorization: `Bearer ${key}` },
@@ -31,7 +31,7 @@ export async function generateBroll(opts: {
   higgsfieldPreset?: HiggsfieldPresetId;
   motionIntensity?: MotionIntensity;
 }): Promise<HiggsfieldJob> {
-  if (isMockMode()) {
+  if (isTestFixtureMode()) {
     return { job_id: `mock-${Date.now()}`, status: 'completed', video_url: 'file://mock-broll.mp4' };
   }
   const key = getSecret('HIGGSFIELD_API_KEY')!;
@@ -55,7 +55,7 @@ export async function generateBroll(opts: {
 }
 
 export async function pollBroll(jobId: string): Promise<HiggsfieldJob> {
-  if (isMockMode()) return { job_id: jobId, status: 'completed', video_url: 'file://mock-broll.mp4' };
+  if (isTestFixtureMode()) return { job_id: jobId, status: 'completed', video_url: 'file://mock-broll.mp4' };
   const key = getSecret('HIGGSFIELD_API_KEY')!;
   const { statusCode, body } = await request(`${API_BASE}/video/${jobId}`, {
     headers: { Authorization: `Bearer ${key}` },

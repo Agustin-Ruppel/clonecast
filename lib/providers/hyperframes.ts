@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import path from 'node:path';
 import { execa } from 'execa';
-import { isMockMode } from '../core/secrets';
+import { isTestFixtureMode } from '../core/secrets';
 import { buildComposition, serializeComposition, type ComposeInput as TypedComposeInput } from '../composition/types';
 
 export type ComposeInput = TypedComposeInput & { outputDir: string };
@@ -39,7 +39,7 @@ function shouldUseSdk(): boolean {
  *                     clearly when this happens so we can spot it in production.
  */
 export async function renderVideo(htmlPath: string, outputMp4: string): Promise<string> {
-  if (isMockMode()) {
+  if (isTestFixtureMode()) {
     await fs.ensureDir(path.dirname(outputMp4));
     await fs.writeFile(outputMp4, Buffer.from('mock-mp4-data'));
     return outputMp4;
@@ -132,7 +132,7 @@ interface MaybeProducerPreprocess {
 }
 
 export async function preprocessAsset(input: PreprocessInput): Promise<unknown> {
-  if (isMockMode()) {
+  if (isTestFixtureMode()) {
     // Empty-but-truthy contract: callers treat falsy/empty as "no upstream
     // result; use fallback provider". An empty array satisfies that.
     return [];

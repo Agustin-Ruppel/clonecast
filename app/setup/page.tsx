@@ -92,9 +92,9 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
   return (
     <div className="space-y-4">
       <p>Te voy a hacer pasar por 7 pasos. Tardás unos 15 minutos en total.</p>
-      <p className="text-ink-500 text-sm">Podés pausar en cualquier momento — el progreso se guarda solo. Las API keys se guardan en <code className="text-accent-400">.env.local</code> con permisos seguros.</p>
-      <div className="card bg-amber-500/5 border-amber-500/20">
-        <p className="text-sm"><strong className="text-amber-400">Mock mode está ON.</strong> Vas a poder probar el flow completo sin keys reales. Cuando metas las keys reales, cambiá <code>CLONECAST_MOCK=false</code> en <code>.env.local</code>.</p>
+      <p className="text-ink-500 text-sm">Podés pausar en cualquier momento — el progreso se guarda solo. Las API keys se guardan encriptadas en tu workspace local.</p>
+      <div className="card bg-accent-500/5 border-accent-500/20">
+        <p className="text-sm"><strong className="text-accent-400">Vas a necesitar tus propias API keys.</strong> Sin keys reales no se genera nada — el wizard te guía paso a paso para conseguir y pegar cada una.</p>
       </div>
       <button onClick={onNext} className="btn-primary">Empezar</button>
     </div>

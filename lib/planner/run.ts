@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { getSecret, isMockMode } from '../core/secrets';
+import { getSecret, isTestFixtureMode } from '../core/secrets';
 import { ShotPlanSchema, type ShotPlan, type PlannedShot, type PlannerInput } from './types';
 
 export interface PlannerAvatarInfo {
@@ -37,7 +37,7 @@ Rules:
 
 export async function planShots(opts: PlannerOpts): Promise<ShotPlan> {
   const nativeVoiceId = opts.avatar?.default_voice_id;
-  if (isMockMode()) {
+  if (isTestFixtureMode()) {
     const plan = deterministicPlan(opts);
     if (nativeVoiceId) {
       plan.voice_id = nativeVoiceId;
@@ -46,7 +46,7 @@ export async function planShots(opts: PlannerOpts): Promise<ShotPlan> {
     return plan;
   }
   const key = getSecret('ANTHROPIC_API_KEY');
-  if (!key) throw new Error('ANTHROPIC_API_KEY not set');
+  if (!key) throw new Error('ANTHROPIC_API_KEY is not configured. Add it in /setup or /settings.');
   const client = new Anthropic({ apiKey: key });
   const r = await client.messages.create({
     model: 'claude-sonnet-4-6',

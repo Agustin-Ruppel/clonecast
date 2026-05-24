@@ -1,14 +1,14 @@
 import { request } from 'undici';
 import fs from 'fs-extra';
 import path from 'node:path';
-import { getSecret, isMockMode } from '../core/secrets';
+import { getSecret, isTestFixtureMode } from '../core/secrets';
 import type { VoiceProvider, VoiceGenerateRequest, VoiceResult } from './contracts';
 
 const API_BASE = 'https://api.cartesia.ai';
 const CARTESIA_VERSION = '2024-06-10';
 
 export async function validateCartesiaKey(key: string): Promise<{ ok: boolean; error?: string }> {
-  if (isMockMode()) return { ok: true };
+  if (isTestFixtureMode()) return { ok: true };
   try {
     const { statusCode } = await request(`${API_BASE}/voices`, {
       headers: { 'X-API-Key': key, 'Cartesia-Version': CARTESIA_VERSION },
@@ -28,7 +28,7 @@ export async function synthesizeCartesia(opts: {
 }): Promise<{ path: string; durationSec: number }> {
   await fs.ensureDir(path.dirname(opts.outputPath));
 
-  if (isMockMode()) {
+  if (isTestFixtureMode()) {
     await fs.writeFile(opts.outputPath, Buffer.from(''));
     return { path: opts.outputPath, durationSec: Math.ceil(opts.text.length / 15) };
   }

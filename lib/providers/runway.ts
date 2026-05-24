@@ -1,12 +1,12 @@
 import { request } from 'undici';
-import { getSecret, isMockMode } from '../core/secrets';
+import { getSecret, isTestFixtureMode } from '../core/secrets';
 import type { VideoProvider, VideoGenerateRequest, VideoJob } from './contracts';
 
 const API_BASE = 'https://api.dev.runwayml.com';
 const RUNWAY_VERSION = '2024-11-06';
 
 export async function validateRunwayKey(key: string): Promise<{ ok: boolean; error?: string }> {
-  if (isMockMode()) return { ok: true };
+  if (isTestFixtureMode()) return { ok: true };
   try {
     const { statusCode } = await request(`${API_BASE}/v1/organization`, {
       headers: { Authorization: `Bearer ${key}`, 'X-Runway-Version': RUNWAY_VERSION },
@@ -22,7 +22,7 @@ function ratioFor(aspect: '9:16' | '16:9' | '1:1'): string {
 }
 
 async function runwayCreate(req: VideoGenerateRequest): Promise<VideoJob> {
-  if (isMockMode()) {
+  if (isTestFixtureMode()) {
     return { jobId: `runway-mock-${Date.now()}`, status: 'queued' };
   }
   const key = getSecret('RUNWAY_API_KEY');
@@ -43,7 +43,7 @@ async function runwayCreate(req: VideoGenerateRequest): Promise<VideoJob> {
 }
 
 async function runwayPoll(jobId: string): Promise<VideoJob> {
-  if (isMockMode()) {
+  if (isTestFixtureMode()) {
     return { jobId, status: 'completed', videoUrl: `file://mock-runway-${jobId}.mp4` };
   }
   const key = getSecret('RUNWAY_API_KEY');

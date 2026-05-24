@@ -1,12 +1,12 @@
 import { request } from 'undici';
 import fs from 'fs-extra';
 import path from 'node:path';
-import { getSecret, isMockMode } from '../core/secrets';
+import { getSecret, isTestFixtureMode } from '../core/secrets';
 
 const API_BASE = 'https://api.elevenlabs.io/v1';
 
 export async function validateElevenLabsKey(key: string): Promise<{ ok: boolean; error?: string; voices?: any[] }> {
-  if (isMockMode()) return { ok: true, voices: [{ voice_id: 'mock-voice', name: 'Mock Voice' }] };
+  if (isTestFixtureMode()) return { ok: true, voices: [{ voice_id: 'mock-voice', name: 'Mock Voice' }] };
   try {
     const { statusCode, body } = await request(`${API_BASE}/voices`, {
       headers: { 'xi-api-key': key },
@@ -26,7 +26,7 @@ export async function synthesize(opts: {
 }): Promise<{ path: string; durationSec: number }> {
   await fs.ensureDir(path.dirname(opts.outputPath));
 
-  if (isMockMode()) {
+  if (isTestFixtureMode()) {
     await fs.writeFile(opts.outputPath, Buffer.from('mock-audio-data'));
     return { path: opts.outputPath, durationSec: Math.ceil(opts.text.length / 15) };
   }

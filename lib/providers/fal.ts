@@ -1,10 +1,10 @@
 import { request } from 'undici';
-import { getSecret, isMockMode } from '../core/secrets';
+import { getSecret, isTestFixtureMode } from '../core/secrets';
 
 const API_BASE = 'https://queue.fal.run';
 
 export async function validateFalKey(key: string): Promise<{ ok: boolean; error?: string }> {
-  if (isMockMode()) return { ok: true };
+  if (isTestFixtureMode()) return { ok: true };
   try {
     const { statusCode } = await request('https://rest.alpha.fal.ai/credits', {
       headers: { Authorization: `Key ${key}` },
@@ -27,7 +27,7 @@ export async function generateKlingBroll(opts: {
   durationSec: 5 | 10;
   aspectRatio: '9:16' | '16:9' | '1:1';
 }): Promise<FalJob> {
-  if (isMockMode()) {
+  if (isTestFixtureMode()) {
     return { request_id: `mock-${Date.now()}`, status: 'COMPLETED', video_url: 'file://mock-kling.mp4' };
   }
   const key = getSecret('FAL_API_KEY')!;
@@ -48,7 +48,7 @@ export async function generateKlingBroll(opts: {
 }
 
 export async function pollFalJob(endpoint: string, requestId: string): Promise<FalJob> {
-  if (isMockMode()) return { request_id: requestId, status: 'COMPLETED', video_url: 'file://mock.mp4' };
+  if (isTestFixtureMode()) return { request_id: requestId, status: 'COMPLETED', video_url: 'file://mock.mp4' };
   const key = getSecret('FAL_API_KEY')!;
   const { statusCode, body } = await request(`${API_BASE}/${endpoint}/requests/${requestId}/status`, {
     headers: { Authorization: `Key ${key}` },

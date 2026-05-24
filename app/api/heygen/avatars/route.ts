@@ -4,7 +4,7 @@ import {
   setCachedAvatars,
   type CachedAvatar,
 } from '@/lib/db/repos/avatars-cache';
-import { getSecret, preloadSecrets } from '@/lib/core/secrets';
+import { getSecret, isTestFixtureMode, preloadSecrets } from '@/lib/core/secrets';
 import { activateRequestWorkspace } from '@/lib/core/active-workspace';
 
 // Cache key was bumped from 'heygen' to 'heygen-v2' so that older cached
@@ -12,54 +12,25 @@ import { activateRequestWorkspace } from '@/lib/core/active-workspace';
 // the next time a client asks. Bump again if the CachedAvatar shape grows.
 const CACHE_KEY = 'heygen-v2';
 
-const MOCK_AVATARS: CachedAvatar[] = [
+// Fixture set used ONLY by vitest (CLONECAST_TEST_FIXTURES=true). Never returned
+// to a real user — when no key is configured in production we respond with
+// `source: 'unconfigured'` so the UI can show a clear "configure your key" CTA.
+const TEST_FIXTURE_AVATARS: CachedAvatar[] = [
   {
-    id: 'mock_avatar_1',
-    name: 'Alex (mock)',
+    id: 'fixture_avatar_1',
+    name: 'Alex (fixture)',
     preview_image_url: '/api/mock-avatar/1',
     gender: 'male',
-    default_voice_id: 'mock-voice-1',
-    default_voice_name: 'Mock Voice Alex',
+    default_voice_id: 'fixture-voice-1',
+    default_voice_name: 'Fixture Voice Alex',
   },
   {
-    id: 'mock_avatar_2',
-    name: 'Bea (mock)',
+    id: 'fixture_avatar_2',
+    name: 'Bea (fixture)',
     preview_image_url: '/api/mock-avatar/2',
     gender: 'female',
-    default_voice_id: 'mock-voice-2',
-    default_voice_name: 'Mock Voice Bea',
-  },
-  {
-    id: 'mock_avatar_3',
-    name: 'Cami (mock)',
-    preview_image_url: '/api/mock-avatar/3',
-    gender: 'female',
-    default_voice_id: 'mock-voice-3',
-    default_voice_name: 'Mock Voice Cami',
-  },
-  {
-    id: 'mock_avatar_4',
-    name: 'Dani (mock)',
-    preview_image_url: '/api/mock-avatar/4',
-    gender: 'male',
-    default_voice_id: 'mock-voice-4',
-    default_voice_name: 'Mock Voice Dani',
-  },
-  {
-    id: 'mock_avatar_5',
-    name: 'Eli (mock)',
-    preview_image_url: '/api/mock-avatar/5',
-    gender: 'female',
-    default_voice_id: 'mock-voice-5',
-    default_voice_name: 'Mock Voice Eli',
-  },
-  {
-    id: 'mock_avatar_6',
-    name: 'Fer (mock)',
-    preview_image_url: '/api/mock-avatar/6',
-    gender: 'male',
-    default_voice_id: 'mock-voice-6',
-    default_voice_name: 'Mock Voice Fer',
+    default_voice_id: 'fixture-voice-2',
+    default_voice_name: 'Fixture Voice Bea',
   },
 ];
 
@@ -104,30 +75,39 @@ export async function GET(req: Request) {
   const key = getSecret('HEYGEN_API_KEY');
   const hasRealKey = !!key && key.length > 8;
 
-  // Cache hit — respect, but still tag the source based on whether a real key is configured.
-  if (!refresh) {
+  // Tests bypass network entirely — return deterministic fixtures.
+  if (isTestFixtureMode() && !hasRealKey) {
+    return NextResponse.json({
+      avatars: TEST_FIXTURE_AVATARS,
+      cached: false,
+      source: 'real',
+    });
+  }
+
+  // Cache hit — only honored when a real key is configured (otherwise we'd
+  // keep serving stale data for an unconfigured workspace).
+  if (!refresh && hasRealKey) {
     const cached = await getCachedAvatars(CACHE_KEY);
     if (cached && cached.length > 0) {
       return NextResponse.json({
         avatars: cached,
         cached: true,
-        source: hasRealKey ? 'real' : 'mock',
+        source: 'real',
       });
     }
   }
 
-  // No real key configured → return mocks regardless of CLONECAST_MOCK.
+  // No real key configured → tell the UI to surface a "configure HEYGEN_API_KEY" CTA.
   if (!hasRealKey) {
-    await setCachedAvatars(CACHE_KEY, MOCK_AVATARS);
     return NextResponse.json({
-      avatars: MOCK_AVATARS,
+      avatars: [],
       cached: false,
-      mock: true,
-      source: 'mock',
+      source: 'unconfigured',
+      error: 'HEYGEN_API_KEY is not configured. Add it in /setup or /settings.',
     });
   }
 
-  // Real key present → call HeyGen, even if mock mode flag is on.
+  // Real key present → call HeyGen.
   try {
     const res = await fetch('https://api.heygen.com/v2/avatars', {
       headers: { 'X-Api-Key': key, Accept: 'application/json' },

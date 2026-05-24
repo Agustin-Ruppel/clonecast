@@ -1,9 +1,9 @@
 import { request } from 'undici';
 import fs from 'fs-extra';
-import { getSecret, isMockMode } from '../core/secrets';
+import { getSecret, isTestFixtureMode } from '../core/secrets';
 
 export async function validateOpenAIKey(key: string): Promise<{ ok: boolean; error?: string }> {
-  if (isMockMode()) return { ok: true };
+  if (isTestFixtureMode()) return { ok: true };
   try {
     const { statusCode } = await request('https://api.openai.com/v1/models', {
       headers: { Authorization: `Bearer ${key}` },
@@ -21,7 +21,7 @@ export interface WordTimestamp {
 }
 
 export async function transcribe(audioPath: string): Promise<WordTimestamp[]> {
-  if (isMockMode()) {
+  if (isTestFixtureMode()) {
     return [
       { word: '[mock]', start: 0, end: 0.5 },
       { word: 'transcription', start: 0.5, end: 1.2 },

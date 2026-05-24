@@ -9,7 +9,7 @@ import {
   DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { isMockMode } from '../core/secrets';
+import { isTestFixtureMode } from '../core/secrets';
 import type { StorageAdapter } from './contracts';
 
 interface R2Config {
@@ -64,7 +64,7 @@ export const r2StorageAdapter: StorageAdapter = {
   async upload(localPath: string, options?: { keyPrefix?: string; contentType?: string }): Promise<string> {
     const base = path.basename(localPath);
     const key = `${options?.keyPrefix ?? 'outputs'}/${base}`;
-    if (isMockMode()) {
+    if (isTestFixtureMode()) {
       return `r2://mock-bucket/${key}`;
     }
     const cfg = readConfig();
@@ -81,7 +81,7 @@ export const r2StorageAdapter: StorageAdapter = {
     return publicUrl(key, cfg);
   },
   async download(url: string, destPath: string): Promise<string> {
-    if (isMockMode()) {
+    if (isTestFixtureMode()) {
       await fs.ensureDir(path.dirname(destPath));
       await fs.writeFile(destPath, '');
       return destPath;
@@ -98,14 +98,14 @@ export const r2StorageAdapter: StorageAdapter = {
     return destPath;
   },
   async signUrl(url: string, ttlSec = 3600): Promise<string> {
-    if (isMockMode()) return url;
+    if (isTestFixtureMode()) return url;
     const cfg = readConfig();
     const client = buildClient(cfg);
     const key = urlToKey(url, cfg);
     return getSignedUrl(client, new GetObjectCommand({ Bucket: cfg.bucket, Key: key }), { expiresIn: ttlSec });
   },
   async delete(url: string): Promise<void> {
-    if (isMockMode()) return;
+    if (isTestFixtureMode()) return;
     const cfg = readConfig();
     const client = buildClient(cfg);
     const key = urlToKey(url, cfg);

@@ -19,7 +19,7 @@ const SAMPLE_SCRIPT: Script = {
 
 describe('composeHTML (integration, mock mode)', () => {
   beforeAll(() => {
-    process.env.CLONECAST_MOCK = 'true';
+    process.env.CLONECAST_TEST_FIXTURES = 'true';
   });
 
   it('writes a readable HTML file to the output directory', async () => {

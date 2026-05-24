@@ -37,7 +37,7 @@ export function invalidateSecretsMirror(): void {
 }
 
 export function getSecret(key: string): string | undefined {
-  // .env.local takes precedence for flags and dev overrides (NODE_ENV, CLONECAST_MOCK, ports).
+  // .env.local takes precedence for flags and dev overrides (NODE_ENV, ports).
   // For real API keys, the encrypted mirror is the source of truth.
   const envValue = process.env[key];
   if (envValue !== undefined && envValue !== '') return envValue;
@@ -69,8 +69,15 @@ export async function persistSecrets(
   if (_mirroredWorkspace === null) _mirroredWorkspace = getWorkspaceId();
 }
 
-export function isMockMode(): boolean {
-  return process.env.CLONECAST_MOCK !== 'false';
+/**
+ * Internal test gate. Only true when the vitest setup (`tests/setup.ts`) sets
+ * `CLONECAST_TEST_FIXTURES=true`. Production code paths NEVER set this — real
+ * APIs are always called, and missing keys surface as clear errors.
+ *
+ * Do not expose this in UI, env examples, or docs.
+ */
+export function isTestFixtureMode(): boolean {
+  return process.env.CLONECAST_TEST_FIXTURES === 'true';
 }
 
 /**

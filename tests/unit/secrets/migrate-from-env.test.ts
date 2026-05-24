@@ -38,7 +38,7 @@ describe('migrateLegacyEnvSecrets', () => {
       envPath,
       [
         '# Some flag',
-        'CLONECAST_MOCK=false',
+        'CLONECAST_LANG=es-AR',
         'HEYGEN_API_KEY=sk-aaaaaaaaaaaaa',
         'ELEVENLABS_VOICE_ID=voice-xxxxxxxx',
       ].join('\n'),
@@ -53,7 +53,7 @@ describe('migrateLegacyEnvSecrets', () => {
     const text = await fs.readFile(envPath, 'utf8');
     expect(text).toContain('# Migrated to encrypted store: HEYGEN_API_KEY');
     expect(text).toContain('# Migrated to encrypted store: ELEVENLABS_VOICE_ID');
-    expect(text).toContain('CLONECAST_MOCK=false');
+    expect(text).toContain('CLONECAST_LANG=es-AR');
     expect(text).not.toMatch(/^HEYGEN_API_KEY=/m);
   });
 

@@ -1,10 +1,10 @@
 import { request } from 'undici';
-import { getSecret, isMockMode } from '../core/secrets';
+import { getSecret, isTestFixtureMode } from '../core/secrets';
 
 const API_BASE = 'https://api.heygen.com';
 
 export async function validateHeyGenKey(key: string): Promise<{ ok: boolean; error?: string; avatars?: any[] }> {
-  if (isMockMode()) return { ok: true, avatars: [{ avatar_id: 'mock-avatar', name: 'Mock Avatar' }] };
+  if (isTestFixtureMode()) return { ok: true, avatars: [{ avatar_id: 'mock-avatar', name: 'Mock Avatar' }] };
   try {
     const { statusCode, body } = await request(`${API_BASE}/v2/avatars`, {
       headers: { 'X-Api-Key': key },
@@ -30,7 +30,7 @@ export async function createAvatarVideo(opts: {
   text: string;
   dimensions: { width: number; height: number };
 }): Promise<HeyGenJob> {
-  if (isMockMode()) {
+  if (isTestFixtureMode()) {
     return { video_id: `mock-${Date.now()}`, status: 'completed', video_url: 'file://mock-avatar.mp4' };
   }
   const key = getSecret('HEYGEN_API_KEY')!;
@@ -51,7 +51,7 @@ export async function createAvatarVideo(opts: {
 }
 
 export async function pollAvatarVideo(videoId: string): Promise<HeyGenJob> {
-  if (isMockMode()) return { video_id: videoId, status: 'completed', video_url: 'file://mock.mp4' };
+  if (isTestFixtureMode()) return { video_id: videoId, status: 'completed', video_url: 'file://mock.mp4' };
   const key = getSecret('HEYGEN_API_KEY')!;
   const { statusCode, body } = await request(`${API_BASE}/v1/video_status.get?video_id=${videoId}`, {
     headers: { 'X-Api-Key': key },

@@ -7,13 +7,13 @@
  * Body: { guion: string, mode: 'class'|'reel-avatar'|'reel-broll', format: '9:16'|'16:9'|'1:1' }
  * Returns: { script: Script }
  *
- * Mock mode: splits sentences and adds placeholder broll prompts.
- * Real mode: uses Claude (same pattern as buildScript in lib/providers/anthropic.ts).
+ * In production this always calls Claude. The test-fixture path
+ * (`isTestFixtureMode()`) is only enabled by vitest via CLONECAST_TEST_FIXTURES=true.
  */
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
-import { getSecret, isMockMode, preloadSecrets } from '@/lib/core/secrets';
+import { getSecret, isTestFixtureMode, preloadSecrets } from '@/lib/core/secrets';
 import { activateRequestWorkspace } from '@/lib/core/active-workspace';
 import { ScriptSchema, type Script, type Shot } from '@/lib/types';
 
@@ -138,8 +138,15 @@ export async function POST(req: Request) {
   }
   const { guion, mode, format, language } = parsed.data;
 
+  if (!isTestFixtureMode() && !getSecret('ANTHROPIC_API_KEY')) {
+    return NextResponse.json(
+      { error: 'ANTHROPIC_API_KEY is not configured. Add it in /setup or /settings.' },
+      { status: 400 },
+    );
+  }
+
   try {
-    const shots = isMockMode()
+    const shots = isTestFixtureMode()
       ? mockChunk(guion, mode)
       : await claudeChunk(guion, mode, language);
 

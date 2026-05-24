@@ -63,8 +63,8 @@ Before v0.2.1, pasting an API key in the wizard wrote it to `.env.local`. That h
 
 ### `.env.local` going forward
 
-`.env.local` is reserved for dev flags only: `CLONECAST_MOCK`, `NODE_ENV`, ports, hostnames, etc. Anything ending in `_API_KEY`, `_VOICE_ID`, or `_AVATAR_ID` is automatically moved to the encrypted store on first run by `migrateLegacyEnvSecrets()`, leaving a `# Migrated to encrypted store: KEY_NAME` comment in its place. The migration is idempotent.
+`.env.local` is reserved for dev flags only: `NODE_ENV`, `CLONECAST_LANG`, ports, hostnames, etc. Anything ending in `_API_KEY`, `_VOICE_ID`, or `_AVATAR_ID` is automatically moved to the encrypted store on first run by `migrateLegacyEnvSecrets()`, leaving a `# Migrated to encrypted store: KEY_NAME` comment in its place. The migration is idempotent.
 
 ### HeyGen avatars endpoint
 
-`GET /api/heygen/avatars` now prefers a real `HEYGEN_API_KEY` over `CLONECAST_MOCK=true`. The response includes `source: 'real' | 'mock'` and the `AvatarPicker` shows a small status pill so users know which data they're looking at.
+`GET /api/heygen/avatars` always calls HeyGen with the configured `HEYGEN_API_KEY`. When no key is configured the response is `{ avatars: [], source: 'unconfigured', error: '…' }` and `AvatarPicker` renders a "Configurar HEYGEN_API_KEY" CTA instead of fake data.

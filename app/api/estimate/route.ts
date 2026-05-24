@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { isMockMode } from '@/lib/core/secrets';
 
 const RATES = {
   anthropic_input_per_mtok: 3,
@@ -30,13 +29,12 @@ export async function POST(req: Request) {
   const total = Object.values(cost).reduce((a, b) => a + b, 0);
 
   return NextResponse.json({
-    mock: isMockMode(),
     duration_sec: duration,
     mode,
     shots,
     broll_provider: brollProvider,
     cost_breakdown: cost,
     total_usd: parseFloat(total.toFixed(2)),
-    note: isMockMode() ? 'Mock mode: estimate shown but no real cost incurred' : 'Real cost — billed to your accounts',
+    note: 'Real cost — billed to your accounts',
   });
 }

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { validateCartesiaKey, synthesizeCartesia, cartesiaVoiceProvider } from '@/lib/providers/cartesia';
 
-beforeEach(() => { process.env.CLONECAST_MOCK = 'true'; });
+beforeEach(() => { process.env.CLONECAST_TEST_FIXTURES = 'true'; });
 
 describe('cartesia (mock mode)', () => {
   it('validates a key without network', async () => {

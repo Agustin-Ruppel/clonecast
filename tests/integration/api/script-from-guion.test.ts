@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { POST } from '@/app/api/script-from-guion/route';
 
 beforeEach(() => {
-  process.env.CLONECAST_MOCK = 'true';
+  process.env.CLONECAST_TEST_FIXTURES = 'true';
 });
 
 function makeReq(body: unknown): Request {

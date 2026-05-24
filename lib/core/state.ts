@@ -1,6 +1,6 @@
 import fs from 'fs-extra';
 import path from 'node:path';
-import { getSecret, isMockMode, migrateLegacyEnvSecrets, preloadSecrets } from './secrets';
+import { getSecret, migrateLegacyEnvSecrets, preloadSecrets } from './secrets';
 import { ProviderKeys } from '../types';
 import type { JobState } from '../types';
 import { runMigrations } from '../db/migrations';
@@ -61,7 +61,6 @@ export async function getSetupStatus() {
     keysConfigured: keys.length,
     characterPackReady: characterReady,
     brandPackReady: brandReady,
-    mockMode: isMockMode(),
     videosCount,
   };
 }

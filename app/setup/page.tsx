@@ -159,7 +159,35 @@ const KEYS_META = [
   { key: 'FAL_API_KEY', label: 'fal.ai (Kling fallback)', url: 'https://fal.ai/dashboard/keys', required: false },
 ];
 
+type VoiceProvider = 'elevenlabs' | 'cartesia';
+type VideoProvider = 'higgsfield' | 'kling' | 'runway' | 'veo';
+type SettingsShape = {
+  voice_provider: VoiceProvider;
+  video_provider_default: VideoProvider;
+  storage_backend: 'local' | 'r2';
+};
+
 function KeysStep({ keys, setKeys, onNext }: any) {
+  const [settings, setSettings] = useState<SettingsShape | null>(null);
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then((r) => r.json() as Promise<SettingsShape>)
+      .then((d) => setSettings(d));
+  }, []);
+
+  const updateSettings = async (partial: Partial<SettingsShape>) => {
+    const res = await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(partial),
+    });
+    if (res.ok) {
+      const next = (await res.json()) as SettingsShape;
+      setSettings(next);
+    }
+  };
+
   const test = async (key: string) => {
     const value = keys[key]?.value || '';
     if (!value) return;
@@ -172,8 +200,62 @@ function KeysStep({ keys, setKeys, onNext }: any) {
     const data = await res.json();
     setKeys((k: any) => ({ ...k, [key]: { value, status: data.ok ? 'ok' : 'error', error: data.error } }));
   };
+
+  const voiceOptions: { value: VoiceProvider; label: string }[] = [
+    { value: 'elevenlabs', label: 'ElevenLabs' },
+    { value: 'cartesia', label: 'Cartesia' },
+  ];
+  const videoOptions: { value: VideoProvider; label: string }[] = [
+    { value: 'higgsfield', label: 'Higgsfield' },
+    { value: 'kling', label: 'Kling' },
+    { value: 'runway', label: 'Runway' },
+    { value: 'veo', label: 'Veo' },
+  ];
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-5">
+      <div className="space-y-3">
+        <div>
+          <div className="label">Voice provider</div>
+          <div className="flex flex-wrap gap-2">
+            {voiceOptions.map((o) => {
+              const active = settings?.voice_provider === o.value;
+              return (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => updateSettings({ voice_provider: o.value })}
+                  className={active ? 'btn-primary !py-1 !text-xs' : 'pill hover:!text-white'}
+                >
+                  {o.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div>
+          <div className="label">Default video model</div>
+          <div className="flex flex-wrap gap-2">
+            {videoOptions.map((o) => {
+              const active = settings?.video_provider_default === o.value;
+              return (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => updateSettings({ video_provider_default: o.value })}
+                  className={active ? 'btn-primary !py-1 !text-xs' : 'pill hover:!text-white'}
+                >
+                  {o.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <p className="text-xs text-ink-500">Tu elección define qué keys son "requeridas" abajo. Podés cambiarla luego en /settings.</p>
+      </div>
+
+      <div className="h-px bg-ink-800" />
+
       <p className="text-sm text-ink-500">Pegá cada key, hacé "Test". Si pasa, se guarda en <code>.env.local</code> automáticamente.</p>
       {KEYS_META.map((m) => (
         <div key={m.key} className="flex items-end gap-3">

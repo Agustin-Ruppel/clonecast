@@ -8,6 +8,8 @@ export interface CachedAvatar {
   name: string;
   preview_image_url: string;
   gender?: string;
+  default_voice_id?: string;
+  default_voice_name?: string;
 }
 
 interface Row {
@@ -17,7 +19,7 @@ interface Row {
   fetched_at: string;
 }
 
-export async function getCachedAvatars(provider: 'heygen'): Promise<CachedAvatar[] | null> {
+export async function getCachedAvatars(provider: string): Promise<CachedAvatar[] | null> {
   await runMigrations();
   const db = await getDb();
   const rows = (await db
@@ -42,7 +44,7 @@ export async function getCachedAvatars(provider: 'heygen'): Promise<CachedAvatar
 }
 
 export async function setCachedAvatars(
-  provider: 'heygen',
+  provider: string,
   avatars: CachedAvatar[],
 ): Promise<void> {
   await runMigrations();

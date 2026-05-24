@@ -7,13 +7,60 @@ import {
 import { getSecret, preloadSecrets } from '@/lib/core/secrets';
 import { activateRequestWorkspace } from '@/lib/core/active-workspace';
 
+// Cache key was bumped from 'heygen' to 'heygen-v2' so that older cached
+// entries (which lacked default_voice_id / default_voice_name) get refetched
+// the next time a client asks. Bump again if the CachedAvatar shape grows.
+const CACHE_KEY = 'heygen-v2';
+
 const MOCK_AVATARS: CachedAvatar[] = [
-  { id: 'mock_avatar_1', name: 'Alex (mock)', preview_image_url: '/api/mock-avatar/1', gender: 'male' },
-  { id: 'mock_avatar_2', name: 'Bea (mock)', preview_image_url: '/api/mock-avatar/2', gender: 'female' },
-  { id: 'mock_avatar_3', name: 'Cami (mock)', preview_image_url: '/api/mock-avatar/3', gender: 'female' },
-  { id: 'mock_avatar_4', name: 'Dani (mock)', preview_image_url: '/api/mock-avatar/4', gender: 'male' },
-  { id: 'mock_avatar_5', name: 'Eli (mock)', preview_image_url: '/api/mock-avatar/5', gender: 'female' },
-  { id: 'mock_avatar_6', name: 'Fer (mock)', preview_image_url: '/api/mock-avatar/6', gender: 'male' },
+  {
+    id: 'mock_avatar_1',
+    name: 'Alex (mock)',
+    preview_image_url: '/api/mock-avatar/1',
+    gender: 'male',
+    default_voice_id: 'mock-voice-1',
+    default_voice_name: 'Mock Voice Alex',
+  },
+  {
+    id: 'mock_avatar_2',
+    name: 'Bea (mock)',
+    preview_image_url: '/api/mock-avatar/2',
+    gender: 'female',
+    default_voice_id: 'mock-voice-2',
+    default_voice_name: 'Mock Voice Bea',
+  },
+  {
+    id: 'mock_avatar_3',
+    name: 'Cami (mock)',
+    preview_image_url: '/api/mock-avatar/3',
+    gender: 'female',
+    default_voice_id: 'mock-voice-3',
+    default_voice_name: 'Mock Voice Cami',
+  },
+  {
+    id: 'mock_avatar_4',
+    name: 'Dani (mock)',
+    preview_image_url: '/api/mock-avatar/4',
+    gender: 'male',
+    default_voice_id: 'mock-voice-4',
+    default_voice_name: 'Mock Voice Dani',
+  },
+  {
+    id: 'mock_avatar_5',
+    name: 'Eli (mock)',
+    preview_image_url: '/api/mock-avatar/5',
+    gender: 'female',
+    default_voice_id: 'mock-voice-5',
+    default_voice_name: 'Mock Voice Eli',
+  },
+  {
+    id: 'mock_avatar_6',
+    name: 'Fer (mock)',
+    preview_image_url: '/api/mock-avatar/6',
+    gender: 'male',
+    default_voice_id: 'mock-voice-6',
+    default_voice_name: 'Mock Voice Fer',
+  },
 ];
 
 interface HeyGenAvatarRaw {
@@ -25,6 +72,8 @@ interface HeyGenAvatarRaw {
   preview_url?: string;
   thumbnail_url?: string;
   gender?: string;
+  default_voice_id?: string;
+  default_voice_name?: string;
 }
 
 interface HeyGenListResponse {
@@ -41,6 +90,8 @@ function mapHeyGen(raw: HeyGenAvatarRaw): CachedAvatar | null {
     preview_image_url:
       raw.preview_image_url ?? raw.preview_url ?? raw.thumbnail_url ?? '',
     gender: raw.gender,
+    default_voice_id: raw.default_voice_id,
+    default_voice_name: raw.default_voice_name,
   };
 }
 
@@ -55,7 +106,7 @@ export async function GET(req: Request) {
 
   // Cache hit — respect, but still tag the source based on whether a real key is configured.
   if (!refresh) {
-    const cached = await getCachedAvatars('heygen');
+    const cached = await getCachedAvatars(CACHE_KEY);
     if (cached && cached.length > 0) {
       return NextResponse.json({
         avatars: cached,
@@ -67,7 +118,7 @@ export async function GET(req: Request) {
 
   // No real key configured → return mocks regardless of CLONECAST_MOCK.
   if (!hasRealKey) {
-    await setCachedAvatars('heygen', MOCK_AVATARS);
+    await setCachedAvatars(CACHE_KEY, MOCK_AVATARS);
     return NextResponse.json({
       avatars: MOCK_AVATARS,
       cached: false,
@@ -99,7 +150,7 @@ export async function GET(req: Request) {
       const a = mapHeyGen(r);
       if (a) mapped.push(a);
     }
-    await setCachedAvatars('heygen', mapped);
+    await setCachedAvatars(CACHE_KEY, mapped);
     return NextResponse.json({ avatars: mapped, cached: false, source: 'real' });
   } catch (err) {
     return NextResponse.json(

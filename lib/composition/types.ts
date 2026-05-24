@@ -24,6 +24,7 @@ import type {
 import { generateHyperframesHtml, CANVAS_DIMENSIONS } from '@hyperframes/core';
 import type { Script, Shot, BrandPack } from '../types';
 import type { WordTimestamp } from '../providers/openai';
+import { CAPTION_CSS, DEFAULT_CAPTION_STYLE, type CaptionStyleId } from './caption-styles';
 
 // Re-export commonly used core types so callers depend on this module, not on @hyperframes/core directly.
 export type {
@@ -110,16 +111,12 @@ function buildCustomStyles(brand?: BrandPack | null): string {
   const primary = brand?.primary_color ?? '#7C5CFF';
   const secondary = brand?.secondary_color ?? '#0EA5E9';
   const font = brand?.font_family ?? 'Inter, system-ui, sans-serif';
+  // Caption CSS comes from the single source of truth in caption-styles.ts so
+  // the runtime composition and the wizard preview always render identically.
   return `
 :root { --primary: ${primary}; --secondary: ${secondary}; --font: ${font}; }
 body { font-family: var(--font); background: black; }
-.cap { display: inline-block; margin: 0 6px; padding: 4px 10px; font-weight: 800; color: white; text-shadow: 0 4px 16px rgba(0,0,0,0.8); }
-.cap--pill-karaoke { background: var(--primary); border-radius: 999px; padding: 6px 18px; box-shadow: 0 8px 24px rgba(124,92,255,0.4); }
-.cap--highlight { background: linear-gradient(180deg, transparent 60%, var(--primary) 60%); padding: 0 4px; border-radius: 4px; }
-.cap--kinetic-slam { text-transform: uppercase; -webkit-text-stroke: 4px black; letter-spacing: -2px; }
-.cap--emoji-pop { background: rgba(0,0,0,0.7); border-radius: 8px; }
-.cap--gradient-fill { background: linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.cap--neon-glow { color: var(--primary); text-shadow: 0 0 12px var(--primary), 0 0 24px var(--primary); }
+${CAPTION_CSS}
 .lower-third { background: rgba(0,0,0,0.4); border-left: 6px solid var(--primary); padding: 12px 20px; border-radius: 4px; }
 `.trim();
 }
@@ -157,7 +154,7 @@ export function buildComposition(input: ComposeInput): Composition {
     const videoSrc = videoPaths[i] ?? '';
     const audioSrc = audioPaths[i];
     const shotCaptions = captions[i] ?? [];
-    const captionStyle = shot.caption_style || 'pill-karaoke';
+    const captionStyle: CaptionStyleId = (shot.caption_style as CaptionStyleId) || DEFAULT_CAPTION_STYLE;
 
     const video: TimelineMediaElement = {
       id: nextId('video'),

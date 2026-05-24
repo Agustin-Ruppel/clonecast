@@ -1,6 +1,8 @@
 import { z } from 'zod';
+import { CAPTION_STYLE_IDS, DEFAULT_CAPTION_STYLE } from './composition/caption-styles';
 
 export type { ProviderId } from './providers/contracts';
+export type { CaptionStyleId, CaptionStyleMeta, CaptionCategory } from './composition/caption-styles';
 
 export const CreatorProfileSchema = z.object({
   name: z.string().min(1),
@@ -49,7 +51,7 @@ export const ShotSchema = z.object({
       use_character_ref: z.boolean().default(true),
     })
     .optional(),
-  caption_style: z.string().default('pill-karaoke'),
+  caption_style: z.enum(CAPTION_STYLE_IDS).default(DEFAULT_CAPTION_STYLE),
 });
 export type Shot = z.infer<typeof ShotSchema>;
 

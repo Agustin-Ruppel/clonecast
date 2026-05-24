@@ -11,6 +11,40 @@ interface ApiResponse {
   error?: string;
 }
 
+type FilterId = 'all' | 'male' | 'female' | 'recent';
+
+const RECENT_KEY = 'clonecast:avatar:recent';
+const RECENT_MAX = 8;
+
+function readRecent(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(RECENT_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((v): v is string => typeof v === 'string').slice(0, RECENT_MAX);
+  } catch {
+    return [];
+  }
+}
+
+function writeRecent(ids: string[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(RECENT_KEY, JSON.stringify(ids.slice(0, RECENT_MAX)));
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
+function pushRecent(id: string): string[] {
+  const cur = readRecent().filter((x) => x !== id);
+  const next = [id, ...cur].slice(0, RECENT_MAX);
+  writeRecent(next);
+  return next;
+}
+
 export interface AvatarPickerProps {
   selected: string | null;
   onChange: (id: string) => void;
@@ -21,8 +55,21 @@ export function AvatarPicker({ selected, onChange, allowNone }: AvatarPickerProp
   const [avatars, setAvatars] = useState<CachedAvatar[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [rawQuery, setRawQuery] = useState('');
   const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<FilterId>('all');
+  const [recent, setRecent] = useState<string[]>([]);
   const [source, setSource] = useState<'real' | 'mock' | null>(null);
+
+  // Debounce search input by 200ms
+  useEffect(() => {
+    const t = setTimeout(() => setQuery(rawQuery), 200);
+    return () => clearTimeout(t);
+  }, [rawQuery]);
+
+  useEffect(() => {
+    setRecent(readRecent());
+  }, []);
 
   const load = useCallback(async (refresh = false) => {
     setLoading(true);
@@ -47,22 +94,41 @@ export function AvatarPicker({ selected, onChange, allowNone }: AvatarPickerProp
   }, [load]);
 
   const filtered = useMemo(() => {
-    if (!query) return avatars;
-    const q = query.toLowerCase();
-    return avatars.filter((a) => a.name.toLowerCase().includes(q));
-  }, [avatars, query]);
+    let list = avatars;
+    if (filter === 'male') list = list.filter((a) => a.gender === 'male');
+    else if (filter === 'female') list = list.filter((a) => a.gender === 'female');
+    else if (filter === 'recent') {
+      const set = new Set(recent);
+      list = recent
+        .map((id) => list.find((a) => a.id === id))
+        .filter((a): a is CachedAvatar => !!a && set.has(a.id));
+    }
+    if (query) {
+      const q = query.toLowerCase();
+      list = list.filter((a) => a.name.toLowerCase().includes(q));
+    }
+    return list;
+  }, [avatars, filter, recent, query]);
+
+  const selectedAvatar = useMemo(
+    () => avatars.find((a) => a.id === selected) ?? null,
+    [avatars, selected],
+  );
+
+  const handlePick = (id: string) => {
+    onChange(id);
+    if (id) setRecent(pushRecent(id));
+  };
 
   if (loading) {
     return (
-      <div>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="card !p-2 bg-ink-800 animate-pulse">
-              <div className="aspect-square rounded bg-ink-700/60" />
-              <div className="h-3 mt-2 rounded bg-ink-700/60" />
-            </div>
-          ))}
-        </div>
+      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+        {Array.from({ length: 16 }).map((_, i) => (
+          <div key={i} className="card !p-2 bg-ink-800 animate-pulse">
+            <div className="aspect-square rounded bg-ink-700/60" />
+            <div className="h-3 mt-2 rounded bg-ink-700/60" />
+          </div>
+        ))}
       </div>
     );
   }
@@ -96,48 +162,75 @@ export function AvatarPicker({ selected, onChange, allowNone }: AvatarPickerProp
     );
   }
 
+  const filterChips: { id: FilterId; label: string }[] = [
+    { id: 'all', label: 'Todos' },
+    { id: 'male', label: 'Hombres' },
+    { id: 'female', label: 'Mujeres' },
+    { id: 'recent', label: 'Recientes' },
+  ];
+
+  const gridClass = `grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2${
+    avatars.length > 20 ? ' max-h-[500px] overflow-y-auto pr-2 clonecast-scrollbar' : ''
+  }`;
+
   return (
     <div className="space-y-3">
-      {source === 'real' && (
-        <span className="pill-success inline-block text-xs">Conectado a tu cuenta HeyGen</span>
-      )}
-      {source === 'mock' && (
-        <span className="pill-warning inline-block text-xs">
-          Mostrando ejemplos — configurá HEYGEN_API_KEY en Settings
-        </span>
-      )}
       <div className="flex items-center justify-between gap-3">
-        {avatars.length > 12 ? (
-          <input
-            className="input flex-1 max-w-xs"
-            placeholder="Buscar por nombre…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        ) : (
-          <div />
+        {source === 'real' && (
+          <span className="pill-success inline-block text-xs">Conectado a tu cuenta HeyGen</span>
+        )}
+        {source === 'mock' && (
+          <span className="pill-warning inline-block text-xs">
+            Mostrando ejemplos — configurá HEYGEN_API_KEY en Settings
+          </span>
         )}
         <button
           type="button"
           onClick={() => void load(true)}
-          className="btn-secondary !py-1 !text-xs"
+          className="btn-secondary !py-1 !text-xs ml-auto"
           title="Refrescar desde HeyGen"
         >
           ↻ Sync
         </button>
       </div>
 
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+      <input
+        className="input w-full"
+        placeholder="Buscar avatar por nombre…"
+        value={rawQuery}
+        onChange={(e) => setRawQuery(e.target.value)}
+        aria-label="Buscar avatar"
+      />
+
+      <div className="flex flex-wrap gap-2">
+        {filterChips.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => setFilter(c.id)}
+            className={
+              filter === c.id
+                ? 'btn-primary !py-1 !text-xs'
+                : 'pill hover:!text-white'
+            }
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      <div className={gridClass}>
         {filtered.map((a) => {
           const isSelected = selected === a.id;
           return (
             <button
               key={a.id}
               type="button"
-              onClick={() => onChange(a.id)}
-              className={`card !p-2 text-left transition-colors hover:border-accent-500/40 ${
+              onClick={() => handlePick(a.id)}
+              className={`card !p-1.5 text-left transition-colors hover:border-accent-500/40 ${
                 isSelected ? 'ring-2 ring-accent-500' : ''
               }`}
+              style={{ maxWidth: 140 }}
             >
               <div className="aspect-square rounded overflow-hidden bg-ink-800">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -147,26 +240,49 @@ export function AvatarPicker({ selected, onChange, allowNone }: AvatarPickerProp
                   className="w-full h-full object-cover"
                 />
               </div>
-              <div className="mt-2 text-xs truncate">{a.name}</div>
+              <div className="mt-1.5 text-[11px] truncate">{a.name}</div>
             </button>
           );
         })}
 
-        {allowNone && (
+        {allowNone && filter === 'all' && !query && (
           <button
             type="button"
             onClick={() => onChange('')}
-            className={`card !p-2 text-left transition-colors hover:border-accent-500/40 ${
+            className={`card !p-1.5 text-left transition-colors hover:border-accent-500/40 ${
               selected === '' || selected === null ? 'ring-2 ring-accent-500' : ''
             }`}
+            style={{ maxWidth: 140 }}
           >
             <div className="aspect-square rounded bg-ink-800 flex items-center justify-center text-ink-500 text-2xl">
               ×
             </div>
-            <div className="mt-2 text-xs truncate">Sin avatar</div>
+            <div className="mt-1.5 text-[11px] truncate">Sin avatar</div>
           </button>
         )}
       </div>
+
+      {filtered.length === 0 && (
+        <p className="text-xs text-ink-500 italic">
+          {filter === 'recent'
+            ? 'Todavía no elegiste ningún avatar recientemente.'
+            : 'Ningún avatar coincide con tu búsqueda.'}
+        </p>
+      )}
+
+      {selectedAvatar && (
+        <div className="pt-1">
+          {selectedAvatar.default_voice_name ? (
+            <span className="pill-success inline-block text-xs">
+              Voz nativa: {selectedAvatar.default_voice_name}
+            </span>
+          ) : (
+            <span className="pill-warning inline-block text-xs">
+              Sin voz nativa — necesitarás ElevenLabs
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

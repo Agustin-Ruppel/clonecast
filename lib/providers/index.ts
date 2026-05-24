@@ -6,6 +6,7 @@ export * from './heygen';
 export * from './higgsfield';
 export * from './fal';
 export * from './hyperframes';
+export * from './runway';
 
 import { validateAnthropicKey } from './anthropic';
 import { validateOpenAIKey } from './openai';
@@ -14,6 +15,7 @@ import { validateCartesiaKey } from './cartesia';
 import { validateHeyGenKey } from './heygen';
 import { validateHiggsfieldKey } from './higgsfield';
 import { validateFalKey } from './fal';
+import { validateRunwayKey } from './runway';
 import type { ProviderKey } from '../types';
 
 export const validators: Record<ProviderKey, (key: string) => Promise<{ ok: boolean; error?: string }>> = {
@@ -24,4 +26,5 @@ export const validators: Record<ProviderKey, (key: string) => Promise<{ ok: bool
   HEYGEN_API_KEY: validateHeyGenKey,
   HIGGSFIELD_API_KEY: validateHiggsfieldKey,
   FAL_API_KEY: validateFalKey,
+  RUNWAY_API_KEY: validateRunwayKey,
 };

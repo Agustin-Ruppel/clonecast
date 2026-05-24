@@ -2,6 +2,7 @@ import { isMockMode } from '../core/secrets';
 import type { ProviderId, VideoProvider, VoiceProvider } from './contracts';
 import { mockVideoProvider, mockVoiceProvider } from './_mocks';
 import { cartesiaVoiceProvider } from './cartesia';
+import { runwayVideoProvider } from './runway';
 
 const VIDEO_IDS: ReadonlyArray<ProviderId> = ['higgsfield', 'kling', 'runway', 'veo', 'heygen', 'mock'];
 const VOICE_IDS: ReadonlyArray<ProviderId> = ['elevenlabs', 'cartesia', 'mock'];
@@ -12,6 +13,9 @@ export function getVideoProvider(id: ProviderId): VideoProvider {
   }
   if (isMockMode()) {
     return mockVideoProvider(id);
+  }
+  if (id === 'runway') {
+    return runwayVideoProvider;
   }
   // Phase B will adapt real adapters (heygen, higgsfield, etc.) to the VideoProvider contract.
   throw new Error(

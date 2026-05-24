@@ -96,5 +96,6 @@ export const ProviderKeys = [
   'HEYGEN_API_KEY',
   'HIGGSFIELD_API_KEY',
   'FAL_API_KEY',
+  'RUNWAY_API_KEY',
 ] as const;
 export type ProviderKey = (typeof ProviderKeys)[number];

@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+export type { ProviderId } from './providers/contracts';
+
 export const CreatorProfileSchema = z.object({
   name: z.string().min(1),
   language: z.string().default('es-AR'),

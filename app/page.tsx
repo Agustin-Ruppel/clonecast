@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { getSetupStatus, listJobs } from '@/lib/core/state';
 import { ProviderKeys } from '@/lib/types';
 import { getSecret, isMockMode, mask } from '@/lib/core/secrets';
+import { Disclosure } from '@/components/ui/Disclosure';
+import { Empty } from '@/components/ui/Empty';
 
 export default async function DashboardPage() {
   const status = await getSetupStatus();
@@ -52,26 +54,29 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-3 gap-6">
         <section className="col-span-2 card">
           <div className="flex justify-between items-baseline mb-4">
-            <h2 className="font-semibold">Actividad — últimos 7 días</h2>
-            <span className="text-xs text-ink-500">{jobs.length} totales</span>
+            <h2 className="font-semibold">Videos recientes</h2>
+            <Link href="/library" className="text-xs text-accent-400 hover:underline">Ver todos →</Link>
           </div>
-          <div className="flex items-end gap-2 h-32">
-            {last7Days.map((d, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
-                <div className="w-full flex-1 flex items-end">
-                  <div
-                    className="w-full bg-accent-500/80 hover:bg-accent-500 rounded-t transition-colors relative group"
-                    style={{ height: `${(d.count / maxCount) * 100}%`, minHeight: d.count > 0 ? 4 : 0 }}
-                  >
-                    {d.count > 0 && (
-                      <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-xs text-ink-500">{d.count}</span>
-                    )}
+          {recentJobs.length === 0 ? (
+            <Empty
+              icon="🎬"
+              title="Todavía no generaste videos"
+              description="Empezá tu primer video con un prompt o un script."
+              cta={{ label: 'Generar mi primer video', href: '/generate' }}
+            />
+          ) : (
+            <ul className="space-y-2">
+              {recentJobs.map((j) => (
+                <li key={j.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-ink-800/50 transition-colors">
+                  <div>
+                    <div className="font-mono text-xs text-ink-500">{j.id}</div>
+                    <div className="text-sm">{new Date(j.created_at).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
                   </div>
-                </div>
-                <span className="text-[10px] text-ink-500 capitalize">{d.day}</span>
-              </div>
-            ))}
-          </div>
+                  <JobStatusPill status={j.status} />
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         <section className="card">
@@ -92,53 +97,57 @@ export default async function DashboardPage() {
         </section>
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
-        <section className="card">
-          <div className="flex justify-between items-baseline mb-4">
-            <h2 className="font-semibold">Videos recientes</h2>
-            <Link href="/library" className="text-xs text-accent-400 hover:underline">Ver todos →</Link>
-          </div>
-          {recentJobs.length === 0 ? (
-            <p className="text-sm text-ink-500">Todavía no generaste videos.</p>
-          ) : (
-            <ul className="space-y-2">
-              {recentJobs.map((j) => (
-                <li key={j.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-ink-800/50 transition-colors">
-                  <div>
-                    <div className="font-mono text-xs text-ink-500">{j.id}</div>
-                    <div className="text-sm">{new Date(j.created_at).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
-                  </div>
-                  <JobStatusPill status={j.status} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="card">
-          <h2 className="font-semibold mb-4">API status</h2>
-          <div className="space-y-2">
-            {ProviderKeys.map((k) => {
-              const has = !!getSecret(k);
-              return (
-                <div key={k} className="flex items-center justify-between text-sm">
-                  <span className="text-ink-500 font-mono text-xs">{k.replace('_API_KEY', '')}</span>
-                  <span className={has ? 'pill-success' : 'pill'}>
-                    {has ? mask(getSecret(k)) : 'no configurada'}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-          <Link href="/setup" className="btn-secondary w-full mt-4 justify-center">Gestionar keys</Link>
-        </section>
-      </div>
-
       <section className="grid grid-cols-3 gap-4">
         <QuickAction href="/generate" title="Generar video" desc="Idea → MP4 en minutos" emoji="✨" disabled={!status.complete} />
         <QuickAction href="/library" title="Library" desc={`${jobs.length} videos guardados`} emoji="📂" />
         <QuickAction href="/setup" title="Configuración" desc="Keys, character, brand" emoji="⚙️" />
       </section>
+
+      <Disclosure title="Detalles del sistema" defaultOpen={false}>
+        <div className="grid grid-cols-2 gap-6 pt-2">
+          <section>
+            <div className="flex justify-between items-baseline mb-4">
+              <h3 className="font-semibold text-sm">Actividad — últimos 7 días</h3>
+              <span className="text-xs text-ink-500">{jobs.length} totales</span>
+            </div>
+            <div className="flex items-end gap-2 h-32">
+              {last7Days.map((d, i) => (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+                  <div className="w-full flex-1 flex items-end">
+                    <div
+                      className="w-full bg-accent-500/80 hover:bg-accent-500 rounded-t transition-colors relative"
+                      style={{ height: `${(d.count / maxCount) * 100}%`, minHeight: d.count > 0 ? 4 : 0 }}
+                    >
+                      {d.count > 0 && (
+                        <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-xs text-ink-500">{d.count}</span>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-ink-500 capitalize">{d.day}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section>
+            <h3 className="font-semibold text-sm mb-4">API status</h3>
+            <div className="space-y-2">
+              {ProviderKeys.map((k) => {
+                const has = !!getSecret(k);
+                return (
+                  <div key={k} className="flex items-center justify-between text-sm">
+                    <span className="text-ink-500 font-mono text-xs">{k.replace('_API_KEY', '')}</span>
+                    <span className={has ? 'pill-success' : 'pill'}>
+                      {has ? mask(getSecret(k)) : 'no configurada'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <Link href="/setup" className="btn-secondary w-full mt-4 justify-center">Gestionar keys</Link>
+          </section>
+        </div>
+      </Disclosure>
     </div>
   );
 }

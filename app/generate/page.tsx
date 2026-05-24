@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { CompositionPreview } from '@/components/CompositionPreview';
 import ShotList from '@/components/ShotList';
 import PresetPicker from '@/components/PresetPicker';
@@ -9,6 +10,8 @@ import BrandOverride from '@/components/BrandOverride';
 import type { Script, Shot, BrollModelId, BrandPack } from '@/lib/types';
 import type { Preset } from '@/lib/presets';
 import { ShotSchema } from '@/lib/types';
+import { useUndoableState } from '@/lib/core/history';
+import { useToast } from '@/components/ui/Toast';
 
 const STEPS = ['script', 'audio', 'video', 'transcribe', 'compose', 'render'] as const;
 type Step = (typeof STEPS)[number];
@@ -95,7 +98,12 @@ export default function GeneratePage() {
   const [scriptSubTab, setScriptSubTab] = useState<'visual' | 'json'>('visual');
   const [prompt, setPrompt] = useState('Reel de 30s presentándome y lo que hago con IA');
   const [scriptJson, setScriptJson] = useState(JSON.stringify(EXAMPLE_SCRIPT, null, 2));
-  const [shots, setShots] = useState<Shot[]>(() => shotsFromRaw(EXAMPLE_SCRIPT));
+  const shotsUndo = useUndoableState<Shot[]>(
+    shotsFromRaw(EXAMPLE_SCRIPT),
+    'clonecast:generate:shots',
+  );
+  const shots = shotsUndo.state;
+  const setShots = shotsUndo.set;
   const [scriptFormat, setScriptFormat] = useState<Script['format']>('9:16');
   const [scriptLanguage, setScriptLanguage] = useState<string>('es-AR');
   // Tracks whether the most-recent state change came from the visual editor
@@ -112,7 +120,9 @@ export default function GeneratePage() {
   const [estimate, setEstimate] = useState<any>(null);
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
   const [brandOverride, setBrandOverride] = useState<Partial<BrandPack> | null>(null);
+  const [recentJobs, setRecentJobs] = useState<Array<{ id: string; created_at: string; status: string }>>([]);
   const router = useRouter();
+  const toast = useToast();
 
   /**
    * Apply a preset:
@@ -170,6 +180,18 @@ export default function GeneratePage() {
       // ignore — surfaced via validateScript on blur
     }
   };
+
+  // Load recent jobs for the right-pane history panel.
+  useEffect(() => {
+    fetch('/api/library')
+      .then((r) => (r.ok ? r.json() : { jobs: [] }))
+      .then((data: { jobs?: Array<{ id: string; created_at: string; status: string }> }) => {
+        if (Array.isArray(data?.jobs)) {
+          setRecentJobs(data.jobs.slice(0, 3));
+        }
+      })
+      .catch(() => {});
+  }, [doneJob]);
 
   useEffect(() => {
     fetch('/api/estimate', {
@@ -255,13 +277,26 @@ export default function GeneratePage() {
           setProgress((p) => ({ ...p, [parsed.step]: { progress: parsed.progress, message: parsed.message } }));
         } else if (event === 'done') {
           setDoneJob(parsed.job);
+          toast.show('Video listo', 'success');
         } else if (event === 'error') {
           setError(parsed.message);
+          toast.show(`Error: ${parsed.message}`, 'error');
         }
       }
     }
     setRunning(false);
   };
+
+  // Listen for global cmd+enter submit event (dispatched by useGlobalShortcuts).
+  const startRef = useRef(start);
+  startRef.current = start;
+  useEffect(() => {
+    const onSubmit = (): void => {
+      if (!running) startRef.current();
+    };
+    document.addEventListener('clonecast:submit', onSubmit);
+    return () => document.removeEventListener('clonecast:submit', onSubmit);
+  }, [running]);
 
   // Real-time parse of the script JSON for the live preview (script mode only).
   // We intentionally don't surface parse errors here — `scriptError` already
@@ -464,6 +499,28 @@ export default function GeneratePage() {
         {showPreview && (
           <aside className="space-y-4">
             <CompositionPreview script={parsedScriptForPreview} />
+            {recentJobs.length > 0 && (
+              <div className="card">
+                <div className="flex justify-between items-baseline mb-3">
+                  <h3 className="font-semibold text-sm">Recientes</h3>
+                  <Link href="/library" className="text-xs text-accent-400 hover:underline">Ver todos →</Link>
+                </div>
+                <ul className="space-y-1.5 text-xs">
+                  {recentJobs.map((j) => (
+                    <li key={j.id} className="flex justify-between items-center p-1.5 rounded hover:bg-ink-800/50">
+                      <Link href="/library" className="font-mono text-ink-500 truncate hover:text-white">{j.id}</Link>
+                      <span className={`pill ${j.status === 'done' ? '!bg-emerald-500/10 !text-emerald-400' : ''}`}>{j.status}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {shotsUndo.canUndo && (
+              <div className="text-xs text-ink-500 flex items-center gap-2">
+                <button onClick={shotsUndo.undo} className="btn-ghost !py-1 !text-xs">↶ Deshacer</button>
+                <span>cmd+z</span>
+              </div>
+            )}
           </aside>
         )}
       </div>

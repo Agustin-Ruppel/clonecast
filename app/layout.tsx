@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import './globals.css';
+import { Providers } from './Providers';
 
 export const metadata: Metadata = {
   title: 'Clonecast — AI Video Pipeline',
@@ -11,6 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
+        <Providers>
         <div className="min-h-screen flex flex-col">
           <header className="border-b border-ink-800 bg-ink-900/50 backdrop-blur sticky top-0 z-10">
             <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
@@ -40,6 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </footer>
         </div>
+        </Providers>
       </body>
     </html>
   );

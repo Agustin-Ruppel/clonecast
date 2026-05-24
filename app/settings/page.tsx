@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useToast } from '@/components/ui/Toast';
 
 type VoiceProvider = 'elevenlabs' | 'cartesia';
 type VideoProvider = 'higgsfield' | 'kling' | 'runway' | 'veo';
@@ -31,7 +32,7 @@ const STORAGE_OPTIONS: { value: StorageBackend; label: string; desc: string }[] 
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const toast = useToast();
 
   useEffect(() => {
     fetch('/api/settings')
@@ -48,7 +49,9 @@ export default function SettingsPage() {
     if (res.ok) {
       const next = (await res.json()) as Settings;
       setSettings(next);
-      setSavedAt(Date.now());
+      toast.show('Configuración guardada', 'success');
+    } else {
+      toast.show('Error al guardar configuración', 'error');
     }
   };
 
@@ -58,14 +61,9 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-10 max-w-4xl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Settings</h1>
-          <p className="text-ink-500 mt-1">Elegí tus proveedores por defecto y el storage backend.</p>
-        </div>
-        {savedAt && Date.now() - savedAt < 3000 && (
-          <span className="pill-success">Guardado ✓</span>
-        )}
+      <div>
+        <h1 className="text-2xl font-bold">Settings</h1>
+        <p className="text-ink-500 mt-1">Elegí tus proveedores por defecto y el storage backend.</p>
       </div>
 
       <section className="space-y-3">

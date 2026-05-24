@@ -1,5 +1,6 @@
 import { listJobs } from '@/lib/core/state';
 import Link from 'next/link';
+import { Empty } from '@/components/ui/Empty';
 
 export default async function LibraryPage() {
   const jobs = await listJobs();
@@ -12,10 +13,12 @@ export default async function LibraryPage() {
       </div>
 
       {jobs.length === 0 && (
-        <div className="card text-center text-ink-500">
-          <p>No tenés videos todavía.</p>
-          <Link href="/generate" className="btn-primary mt-4 inline-block">Generar el primero</Link>
-        </div>
+        <Empty
+          icon="📂"
+          title="No tenés videos todavía"
+          description="Cuando generes tu primer video va a aparecer acá."
+          cta={{ label: 'Generar el primero', href: '/generate' }}
+        />
       )}
 
       <div className="grid grid-cols-2 gap-4">

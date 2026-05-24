@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Disclosure } from '@/components/ui/Disclosure';
 
 const STEPS = [
   { key: 'welcome', title: 'Bienvenida', desc: 'Te explico cómo va el setup' },
@@ -55,6 +56,9 @@ export default function SetupPage() {
 
       <div className="space-y-6">
         <div>
+          <div className="text-xs uppercase tracking-wider text-ink-500 mb-1">
+            Paso {step + 1} de {STEPS.length} · ~{Math.max(15 - step * 2, 2)} min restantes
+          </div>
           <h1 className="text-2xl font-bold">{current.title}</h1>
           <p className="text-ink-500 mt-1">{current.desc}</p>
         </div>
@@ -257,31 +261,58 @@ function KeysStep({ keys, setKeys, onNext }: any) {
       <div className="h-px bg-ink-800" />
 
       <p className="text-sm text-ink-500">Pegá cada key, hacé "Test". Si pasa, se guarda en <code>.env.local</code> automáticamente.</p>
-      {KEYS_META.map((m) => (
-        <div key={m.key} className="flex items-end gap-3">
-          <div className="flex-1">
-            <label className="label flex items-center gap-2">
-              {m.label}
-              {m.required ? <span className="pill-warning">requerido</span> : <span className="pill">opcional</span>}
-              <a href={m.url} target="_blank" rel="noreferrer" className="text-accent-400 hover:underline text-[10px] normal-case">obtener →</a>
-            </label>
-            <input
-              type="password"
-              className="input"
-              placeholder={m.required ? 'sk-...' : 'opcional'}
-              value={keys[m.key]?.value || ''}
-              onChange={(e) => setKeys((k: any) => ({ ...k, [m.key]: { ...k[m.key], value: e.target.value, status: undefined } }))}
-            />
-          </div>
-          <button onClick={() => test(m.key)} className="btn-secondary">
-            {keys[m.key]?.status === 'pending' ? '...' : keys[m.key]?.status === 'ok' ? '✓' : keys[m.key]?.status === 'error' ? '✗' : 'Test'}
-          </button>
-        </div>
+
+      {KEYS_META.filter((m) => m.required).map((m) => (
+        <KeyRow key={m.key} meta={m} keys={keys} setKeys={setKeys} test={test} />
       ))}
+
+      <Disclosure title="Avanzado — keys opcionales (HeyGen, Higgsfield, fal.ai)" defaultOpen={false}>
+        <div className="space-y-3 pt-2">
+          {KEYS_META.filter((m) => !m.required).map((m) => (
+            <KeyRow key={m.key} meta={m} keys={keys} setKeys={setKeys} test={test} />
+          ))}
+        </div>
+      </Disclosure>
       {Object.values(keys).some((k: any) => k.status === 'error') && (
         <div className="text-xs text-rose-400">Alguna key falló — revisá los errores arriba.</div>
       )}
       <button onClick={onNext} className="btn-primary">Continuar</button>
+    </div>
+  );
+}
+
+type KeyMeta = { key: string; label: string; url: string; required: boolean };
+function KeyRow({
+  meta,
+  keys,
+  setKeys,
+  test,
+}: {
+  meta: KeyMeta;
+  keys: Record<string, { value: string; status?: 'ok' | 'error' | 'pending'; error?: string }>;
+  setKeys: React.Dispatch<React.SetStateAction<Record<string, { value: string; status?: 'ok' | 'error' | 'pending'; error?: string }>>>;
+  test: (key: string) => void;
+}) {
+  const m = meta;
+  return (
+    <div className="flex items-end gap-3">
+      <div className="flex-1">
+        <label className="label flex items-center gap-2">
+          {m.label}
+          {m.required ? <span className="pill-warning">requerido</span> : <span className="pill">opcional</span>}
+          <a href={m.url} target="_blank" rel="noreferrer" className="text-accent-400 hover:underline text-[10px] normal-case">obtener →</a>
+        </label>
+        <input
+          type="password"
+          className="input"
+          placeholder={m.required ? 'sk-...' : 'opcional'}
+          value={keys[m.key]?.value || ''}
+          onChange={(e) => setKeys((k) => ({ ...k, [m.key]: { ...k[m.key], value: e.target.value, status: undefined } }))}
+        />
+      </div>
+      <button onClick={() => test(m.key)} className="btn-secondary">
+        {keys[m.key]?.status === 'pending' ? '...' : keys[m.key]?.status === 'ok' ? '✓' : keys[m.key]?.status === 'error' ? '✗' : 'Test'}
+      </button>
     </div>
   );
 }

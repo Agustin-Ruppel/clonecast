@@ -1,6 +1,7 @@
 import fs from 'fs-extra';
 import path from 'node:path';
-import { buildScript, synthesize, transcribe, createAvatarVideo, pollAvatarVideo, generateBroll, pollBroll, composeHTML, renderVideo } from '../providers';
+import { buildScript, synthesize, transcribe, createAvatarVideo, pollAvatarVideo, generateBroll, pollBroll, composeHTML, renderVideo, preprocessAsset } from '../providers';
+import type { WordTimestamp } from '../providers/openai';
 import { saveJobState } from '../core/state';
 import { isMockMode } from '../core/secrets';
 import { getStorage } from '../storage';
@@ -96,10 +97,28 @@ export async function runPipeline(opts: {
     opts.onProgress('transcribe', 0, 'Transcribing for word-level captions...');
     job.steps.transcribe.status = 'running';
     await saveJobState(job);
-    const captions = [];
+    const useHyperframesTranscribe = process.env.CLONECAST_USE_HYPERFRAMES_TRANSCRIBE === 'true';
+    const captions: WordTimestamp[][] = [];
     for (let i = 0; i < audioPaths.length; i++) {
       const p = audioPaths[i];
-      captions.push(p ? await transcribe(p) : []);
+      if (!p) {
+        captions.push([]);
+      } else {
+        let words: WordTimestamp[] | null = null;
+        if (useHyperframesTranscribe) {
+          try {
+            const out = await preprocessAsset({ kind: 'transcribe', path: p });
+            if (Array.isArray(out) && out.length > 0) {
+              words = out as WordTimestamp[];
+            }
+          } catch (err) {
+            // eslint-disable-next-line no-console
+            console.warn(`[transcribe] hyperframes preprocessor unavailable, falling back to Whisper: ${(err as Error).message}`);
+          }
+        }
+        if (!words) words = await transcribe(p);
+        captions.push(words);
+      }
       opts.onProgress('transcribe', ((i + 1) / audioPaths.length) * 100);
     }
     job.steps.transcribe = { status: 'done' };

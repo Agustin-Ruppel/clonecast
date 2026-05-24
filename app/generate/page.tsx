@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { CompositionPreview } from '@/components/CompositionPreview';
+import type { Script } from '@/lib/types';
 
 const STEPS = ['script', 'audio', 'video', 'transcribe', 'compose', 'render'] as const;
 type Step = (typeof STEPS)[number];
@@ -147,10 +149,28 @@ export default function GeneratePage() {
     setRunning(false);
   };
 
+  // Real-time parse of the script JSON for the live preview (script mode only).
+  // We intentionally don't surface parse errors here — `scriptError` already
+  // handles that on blur. Null = preview pane shows the empty state.
+  const parsedScriptForPreview = useMemo<Pick<Script, 'format' | 'shots'> | null>(() => {
+    if (inputMode !== 'script') return null;
+    try {
+      const obj = JSON.parse(scriptJson) as { format?: Script['format']; shots?: unknown };
+      if (!Array.isArray(obj.shots) || obj.shots.length === 0) return null;
+      return { format: obj.format ?? '9:16', shots: obj.shots as Script['shots'] };
+    } catch {
+      return null;
+    }
+  }, [inputMode, scriptJson]);
+
+  const showPreview = inputMode === 'script';
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Generate video</h1>
 
+      <div className={showPreview ? 'grid gap-6 lg:grid-cols-[1fr_400px]' : ''}>
+        <div className="space-y-6">
       <div className="card space-y-4">
         <div className="flex gap-1 p-1 bg-ink-800 rounded-lg w-fit">
           <button
@@ -289,6 +309,13 @@ export default function GeneratePage() {
           <button className="btn-primary mt-3" onClick={() => router.push('/library')}>Ver en library →</button>
         </div>
       )}
+        </div>
+        {showPreview && (
+          <aside className="space-y-4">
+            <CompositionPreview script={parsedScriptForPreview} />
+          </aside>
+        )}
+      </div>
     </div>
   );
 }

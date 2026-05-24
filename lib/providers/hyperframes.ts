@@ -99,3 +99,58 @@ export async function renderVideo(htmlPath: string, outputMp4: string): Promise<
 // Re-export the typed builders for callers that want to inspect the composition
 // before / instead of writing HTML.
 export { buildComposition, serializeComposition } from '../composition/types';
+
+/**
+ * Lightweight wrapper over Hyperframes' planned asset-preprocessing helpers.
+ *
+ * As of `@hyperframes/producer@0.6.x` and `@hyperframes/core@0.6.x` there is
+ * no published TTS / transcription / background-removal helper — the producer
+ * exposes only rendering/capture surfaces. We probe the module at runtime so
+ * the day Hyperframes ships one of these helpers (likely under a
+ * `preprocessAsset` / `transcribe` / `tts` named export), Clonecast can flip
+ * `CLONECAST_USE_HYPERFRAMES_TRANSCRIBE=true` and start using it without
+ * another code change.
+ *
+ * In mock mode we short-circuit and return an empty array so wiring/tests can
+ * run without hitting any network or native deps.
+ *
+ * @throws Error with message starting "not implemented" when the upstream
+ *   helper isn't available — callers use that prefix to decide whether to fall
+ *   back to a local provider (e.g. Whisper).
+ */
+export interface PreprocessInput {
+  kind: 'transcribe' | 'tts' | 'bg-remove';
+  path: string;
+}
+
+type PreprocessorFn = (input: PreprocessInput) => Promise<unknown>;
+
+interface MaybeProducerPreprocess {
+  preprocessAsset?: PreprocessorFn;
+  transcribe?: (path: string) => Promise<unknown>;
+  tts?: (path: string) => Promise<unknown>;
+}
+
+export async function preprocessAsset(input: PreprocessInput): Promise<unknown> {
+  if (isMockMode()) {
+    // Empty-but-truthy contract: callers treat falsy/empty as "no upstream
+    // result; use fallback provider". An empty array satisfies that.
+    return [];
+  }
+  try {
+    const pkg = '@hyperframes/producer';
+    const mod = (await import(/* @vite-ignore */ pkg)) as MaybeProducerPreprocess;
+    if (typeof mod.preprocessAsset === 'function') {
+      return mod.preprocessAsset(input);
+    }
+    if (input.kind === 'transcribe' && typeof mod.transcribe === 'function') {
+      return mod.transcribe(input.path);
+    }
+    if (input.kind === 'tts' && typeof mod.tts === 'function') {
+      return mod.tts(input.path);
+    }
+  } catch (err) {
+    throw new Error(`not implemented: hyperframes preprocessor unavailable (${(err as Error).message})`);
+  }
+  throw new Error(`not implemented: hyperframes ${input.kind} preprocessor not exported`);
+}

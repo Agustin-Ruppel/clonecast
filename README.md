@@ -7,29 +7,43 @@
 
 ---
 
-## Instalación en 30 segundos
+## Instalación — solo clonar el repo
 
-### macOS (la forma fácil)
+**Único requisito previo:** [Node.js 22+](https://nodejs.org) instalado en tu compu.
 
-1. Descargá el repo (o clonalo).
-2. Hacé **doble-click en `start.command`**.
-3. Se abre el navegador en `http://localhost:4242`. Listo.
+### macOS
 
-> La primera vez tarda 30s mientras instala dependencias. Después arranca en 3s.
+```bash
+git clone https://github.com/Agustin-Ruppel/clonecast.git
+cd clonecast
+```
+
+Después hacé **doble-click en `start.command`** desde Finder.
+
+> Primera vez puede pedirte permiso de Gatekeeper: clic derecho → Open → Open. Sólo una vez.
+
+Se abre el navegador en `http://localhost:4242`. El wizard te guía por todo.
 
 ### Linux / WSL
 
 ```bash
+git clone https://github.com/Agustin-Ruppel/clonecast.git
+cd clonecast
 ./start.sh
 ```
 
-### Si querés correrlo manual
+### Windows
 
-```bash
-npm install
-npm run dev
-# http://localhost:4242
-```
+Usá [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) y seguí las instrucciones de Linux.
+
+### Lo que pasa automáticamente al primer arranque
+
+1. Instala dependencias (~30s)
+2. Crea `.env.local` desde el template (permisos `600`)
+3. Levanta el servidor Next.js en puerto 4242
+4. Abre el navegador
+
+Después de la primera vez, arranca en 3 segundos.
 
 ---
 

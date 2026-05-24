@@ -5,6 +5,7 @@ import { ProviderKeys } from '../types';
 import type { JobState } from '../types';
 import { runMigrations } from '../db/migrations';
 import { migrateLegacyState } from '../db/migrate-from-json';
+import { getDb } from '../db/connection';
 import * as jobsRepo from '../db/repos/jobs';
 
 const STATE_DIR = path.join(process.cwd(), 'state');
@@ -19,13 +20,21 @@ async function ensureMigrated(): Promise<void> {
 }
 
 export async function getSetupStatus() {
+  await ensureMigrated();
+  const db = await getDb();
   const keys = ProviderKeys.filter((k) => !!getSecret(k));
 
   const characterReady = await dirHasFiles(path.join(ASSETS_DIR, 'character'), 5);
   const brandReady = await fs.pathExists(path.join(ASSETS_DIR, 'brand', 'brand.json'));
-  const profilePath = path.join(STATE_DIR, 'creator-profile.json');
-  const profileExists = await fs.pathExists(profilePath);
-  const creatorName = profileExists ? (await fs.readJson(profilePath)).name : undefined;
+
+  const profileRow = await db
+    .selectFrom('creator_profile')
+    .selectAll()
+    .orderBy('updated_at', 'desc')
+    .limit(1)
+    .executeTakeFirst();
+  const creatorName = profileRow?.name;
+  const profileExists = !!profileRow;
 
   const totalSteps = 6;
   let completedSteps = 0;
@@ -36,7 +45,11 @@ export async function getSetupStatus() {
   if (brandReady) completedSteps++;
   if (completedSteps === 5) completedSteps++;
 
-  const videosCount = (await safeReaddir(STATE_DIR)).filter((f) => f.startsWith('video-')).length;
+  const videosCountRow = await db
+    .selectFrom('jobs')
+    .select(db.fn.count<number>('id').as('n'))
+    .executeTakeFirst();
+  const videosCount = videosCountRow?.n ?? 0;
 
   return {
     complete: completedSteps === totalSteps,
@@ -55,10 +68,6 @@ async function dirHasFiles(dir: string, minCount: number): Promise<boolean> {
   if (!(await fs.pathExists(dir))) return false;
   const files = (await fs.readdir(dir)).filter((f) => !f.startsWith('.'));
   return files.length >= minCount;
-}
-
-async function safeReaddir(dir: string): Promise<string[]> {
-  try { return await fs.readdir(dir); } catch { return []; }
 }
 
 export async function saveJobState(job: JobState): Promise<void> {

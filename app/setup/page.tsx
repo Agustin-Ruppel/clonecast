@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Disclosure } from '@/components/ui/Disclosure';
+import { AvatarPicker } from '@/components/AvatarPicker';
 
 const STEPS = [
   { key: 'welcome', title: 'Bienvenida', desc: 'Te explico cómo va el setup' },
@@ -341,21 +342,30 @@ function VoiceStep({ voiceId, setVoiceId, onNext }: any) {
 }
 
 function AvatarStep({ avatarId, setAvatarId, onNext }: any) {
-  const save = async () => {
-    if (avatarId) {
-      await fetch('/api/keys/validate', {
-        method: 'POST',
-        body: JSON.stringify({ key: 'HEYGEN_AVATAR_ID', value: avatarId, persist: true }),
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-    onNext();
+  const persist = async (value: string) => {
+    if (!value) return;
+    await fetch('/api/keys/validate', {
+      method: 'POST',
+      body: JSON.stringify({ key: 'HEYGEN_AVATAR_ID', value, persist: true }),
+      headers: { 'Content-Type': 'application/json' },
+    });
   };
+
+  const handlePick = (id: string) => {
+    setAvatarId(id);
+    void persist(id);
+  };
+
   return (
     <div className="space-y-4">
-      <p>El avatar HeyGen es <strong>opcional</strong>. Si lo dejás vacío, vas a poder usar el modo <code className="text-accent-400">reel-broll</code> (sin avatar) que es igual de potente.</p>
-      <input className="input" placeholder="avatar_id de HeyGen (opcional)" value={avatarId} onChange={(e) => setAvatarId(e.target.value)} />
-      <button onClick={save} className="btn-primary">{avatarId ? 'Guardar' : 'Saltar'}</button>
+      <p>
+        El avatar HeyGen es <strong>opcional</strong>. Si lo dejás vacío, vas a poder usar el modo{' '}
+        <code className="text-accent-400">reel-broll</code> (sin avatar) que es igual de potente.
+      </p>
+      <AvatarPicker selected={avatarId || null} onChange={handlePick} allowNone />
+      <button onClick={onNext} className="btn-primary">
+        {avatarId ? 'Continuar' : 'Saltar'}
+      </button>
     </div>
   );
 }

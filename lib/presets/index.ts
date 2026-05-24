@@ -27,6 +27,20 @@ export type Preset = z.infer<typeof PresetSchema>;
 
 export const BUILTIN_PRESETS: Preset[] = [
   {
+    id: 'combo-esencial',
+    label: '★ Combo Esencial',
+    description:
+      'HeyGen avatar hablando + Higgsfield B-rolls personalizados + Hyperframes captions. El combo más usado.',
+    builtin: true,
+    mode: 'reel-avatar',
+    format: '9:16',
+    default_caption_style: 'pill-karaoke',
+    default_broll_model: 'higgsfield',
+    default_shot_duration: 5,
+    hint_prompt_template:
+      'Reel de 30-45s sobre {topic} — yo a cámara con avatar HeyGen, cortes a B-rolls cinematográficos cada 4-5s, captions virales palabra-por-palabra',
+  },
+  {
     id: 'viral-hook',
     label: 'Viral Hook',
     description: 'Reel corto 15-30s con hook fuerte, captions kinetic-slam, cortes rápidos',

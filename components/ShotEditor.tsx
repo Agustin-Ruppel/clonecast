@@ -15,10 +15,29 @@
  * ShotList level if/when we wire it up.
  */
 
-import type { Shot, BrollModelId, CaptionStyleId } from '@/lib/types';
+import type {
+  Shot,
+  BrollModelId,
+  CaptionStyleId,
+  HiggsfieldPresetId,
+  MotionIntensity,
+} from '@/lib/types';
+import { HIGGSFIELD_PRESET_IDS, MOTION_INTENSITIES } from '@/lib/types';
 import { Disclosure } from '@/components/ui/Disclosure';
 import CaptionStylePicker from '@/components/wizard/CaptionStylePicker';
 import { CAPTION_STYLES } from '@/lib/composition/caption-styles';
+
+const HIGGSFIELD_PRESET_LABELS: Record<HiggsfieldPresetId, string> = {
+  photodump: 'Photodump (character consistency)',
+  soul: 'Soul (emotional / cinematic)',
+  'cinema-studio': 'Cinema Studio (pro film look)',
+  'viral-dolly-zoom': 'Viral · Dolly Zoom',
+  'viral-fpv-drone': 'Viral · FPV Drone',
+  'viral-tracking': 'Viral · Tracking',
+  'viral-orbit': 'Viral · Orbit',
+  'viral-crane-up': 'Viral · Crane Up',
+  'viral-handheld': 'Viral · Handheld',
+};
 
 export interface ShotEditorProps {
   shot: Shot;
@@ -153,6 +172,71 @@ export default function ShotEditor({ shot, index, onChange, onDelete, onDuplicat
           className="w-full accent-accent-500"
         />
       </div>
+
+      {broll.model === 'higgsfield' && (
+        <Disclosure
+          title={`▶ Higgsfield · ${broll.higgsfield_preset ?? 'auto'} · motion ${broll.motion_intensity ?? 'auto'}`}
+          defaultOpen={false}
+        >
+          <div className="space-y-3">
+            <div>
+              <label className="label" htmlFor={`shot-hf-preset-${index}`}>
+                Visual preset
+              </label>
+              <select
+                id={`shot-hf-preset-${index}`}
+                aria-label="Higgsfield preset"
+                className="input"
+                value={broll.higgsfield_preset ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  updateBroll({
+                    higgsfield_preset:
+                      v === '' ? undefined : (v as HiggsfieldPresetId),
+                  });
+                }}
+              >
+                <option value="">Auto (default)</option>
+                {HIGGSFIELD_PRESET_IDS.map((id) => (
+                  <option key={id} value={id}>
+                    {HIGGSFIELD_PRESET_LABELS[id]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <span className="label">Motion intensity</span>
+              <div className="flex gap-2" role="radiogroup" aria-label="Motion intensity">
+                {(['', ...MOTION_INTENSITIES] as const).map((m) => {
+                  const selected = (broll.motion_intensity ?? '') === m;
+                  const label = m === '' ? 'Auto' : m;
+                  return (
+                    <button
+                      key={m || 'auto'}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() =>
+                        updateBroll({
+                          motion_intensity:
+                            m === '' ? undefined : (m as MotionIntensity),
+                        })
+                      }
+                      className={`px-3 py-1.5 rounded-lg border text-sm capitalize ${
+                        selected
+                          ? 'border-accent-500 bg-accent-500/10 text-white'
+                          : 'border-ink-800 bg-ink-900/30 text-ink-300 hover:border-ink-700'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </Disclosure>
+      )}
 
       <Disclosure title={`▶ Estilo de subtítulos (${captionLabel})`} defaultOpen={false}>
         <CaptionStylePicker

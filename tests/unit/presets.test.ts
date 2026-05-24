@@ -4,8 +4,16 @@ import { CAPTION_STYLE_IDS } from '@/lib/composition/caption-styles';
 import { BROLL_MODEL_IDS } from '@/lib/types';
 
 describe('built-in presets', () => {
-  it('exposes exactly 5 presets', () => {
-    expect(BUILTIN_PRESETS).toHaveLength(5);
+  it('exposes exactly 6 presets', () => {
+    expect(BUILTIN_PRESETS).toHaveLength(6);
+  });
+
+  it('combo-esencial is the first preset with star marker', () => {
+    const first = BUILTIN_PRESETS[0]!;
+    expect(first.id).toBe('combo-esencial');
+    expect(first.label.startsWith('★')).toBe(true);
+    expect(first.mode).toBe('reel-avatar');
+    expect(first.default_broll_model).toBe('higgsfield');
   });
 
   it('has unique ids', () => {

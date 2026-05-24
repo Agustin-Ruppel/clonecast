@@ -43,6 +43,22 @@ export type BrandPack = z.infer<typeof BrandPackSchema>;
 export const BROLL_MODEL_IDS = ['higgsfield', 'kling', 'runway', 'veo'] as const;
 export type BrollModelId = (typeof BROLL_MODEL_IDS)[number];
 
+export const HIGGSFIELD_PRESET_IDS = [
+  'photodump',
+  'soul',
+  'cinema-studio',
+  'viral-dolly-zoom',
+  'viral-fpv-drone',
+  'viral-tracking',
+  'viral-orbit',
+  'viral-crane-up',
+  'viral-handheld',
+] as const;
+export type HiggsfieldPresetId = (typeof HIGGSFIELD_PRESET_IDS)[number];
+
+export const MOTION_INTENSITIES = ['low', 'medium', 'high'] as const;
+export type MotionIntensity = (typeof MOTION_INTENSITIES)[number];
+
 /**
  * Normalize legacy model strings (e.g. `'higgsfield/photodump'`) to the new
  * enum. Anything starting with `'higgsfield'` becomes `'higgsfield'`; any of
@@ -67,6 +83,8 @@ export const ShotSchema = z.object({
       model: BrollModelSchema,
       duration: z.number().default(4),
       use_character_ref: z.boolean().default(true),
+      higgsfield_preset: z.enum(HIGGSFIELD_PRESET_IDS).optional(),
+      motion_intensity: z.enum(MOTION_INTENSITIES).optional(),
     })
     .optional(),
   caption_style: z.enum(CAPTION_STYLE_IDS).default(DEFAULT_CAPTION_STYLE),

@@ -1,5 +1,6 @@
 import { request } from 'undici';
 import { getSecret, isMockMode } from '../core/secrets';
+import type { HiggsfieldPresetId, MotionIntensity } from '../types';
 
 const API_BASE = 'https://api.higgsfield.ai/v1';
 
@@ -27,21 +28,26 @@ export async function generateBroll(opts: {
   durationSec: number;
   characterRefUrls?: string[];
   aspectRatio: '9:16' | '16:9' | '1:1';
+  higgsfieldPreset?: HiggsfieldPresetId;
+  motionIntensity?: MotionIntensity;
 }): Promise<HiggsfieldJob> {
   if (isMockMode()) {
     return { job_id: `mock-${Date.now()}`, status: 'completed', video_url: 'file://mock-broll.mp4' };
   }
   const key = getSecret('HIGGSFIELD_API_KEY')!;
+  const requestBody: Record<string, unknown> = {
+    prompt: opts.prompt,
+    model: 'photodump',
+    duration_seconds: opts.durationSec,
+    aspect_ratio: opts.aspectRatio,
+    character_references: opts.characterRefUrls ?? [],
+  };
+  if (opts.higgsfieldPreset) requestBody.preset = opts.higgsfieldPreset;
+  if (opts.motionIntensity) requestBody.motion_intensity = opts.motionIntensity;
   const { statusCode, body } = await request(`${API_BASE}/video/generate`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      prompt: opts.prompt,
-      model: 'photodump',
-      duration_seconds: opts.durationSec,
-      aspect_ratio: opts.aspectRatio,
-      character_references: opts.characterRefUrls ?? [],
-    }),
+    body: JSON.stringify(requestBody),
   });
   if (statusCode >= 400) throw new Error(`Higgsfield create failed: HTTP ${statusCode}`);
   const data: any = await body.json();

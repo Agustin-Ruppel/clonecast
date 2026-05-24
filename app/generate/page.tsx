@@ -93,10 +93,14 @@ function shotsFromRaw(obj: unknown): Shot[] {
   return out;
 }
 
+type InputMode = 'prompt' | 'guion' | 'script';
+
 export default function GeneratePage() {
-  const [inputMode, setInputMode] = useState<'prompt' | 'script'>('prompt');
+  const [inputMode, setInputMode] = useState<InputMode>('prompt');
   const [scriptSubTab, setScriptSubTab] = useState<'visual' | 'json'>('visual');
   const [prompt, setPrompt] = useState('Reel de 30s presentándome y lo que hago con IA');
+  const [guion, setGuion] = useState('');
+  const [convertingGuion, setConvertingGuion] = useState(false);
   const [scriptJson, setScriptJson] = useState(JSON.stringify(EXAMPLE_SCRIPT, null, 2));
   const shotsUndo = useUndoableState<Shot[]>(
     shotsFromRaw(EXAMPLE_SCRIPT),
@@ -234,10 +238,44 @@ export default function GeneratePage() {
     setScriptError(null);
   };
 
+  const convertGuion = async () => {
+    if (guion.trim().length === 0) return;
+    setConvertingGuion(true);
+    try {
+      const res = await fetch('/api/script-from-guion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guion, mode, format: scriptFormat, language: scriptLanguage }),
+      });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+      const data = (await res.json()) as { script: Script };
+      const nextShots = shotsFromRaw(data.script);
+      if (nextShots.length === 0) throw new Error('No se generaron shots');
+      applyVisualShots(nextShots);
+      if (data.script.format) setScriptFormat(data.script.format);
+      toast.show(`Guion convertido: ${nextShots.length} shots`, 'success');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.show(`Error convirtiendo guion: ${msg}`, 'error');
+    } finally {
+      setConvertingGuion(false);
+    }
+  };
+
   const start = async () => {
     let payload: any = { mode, duration };
     if (inputMode === 'prompt') {
       payload.prompt = prompt;
+    } else if (inputMode === 'guion') {
+      if (shots.length === 0) {
+        toast.show('Convertí el guion primero', 'error');
+        return;
+      }
+      payload.script = { format: scriptFormat, language: scriptLanguage, shots };
+      payload.duration = shots.reduce((a, s) => a + (s.broll?.duration ?? 4), 0);
     } else {
       const parsed = validateScript(scriptJson);
       if (!parsed) return;
@@ -302,12 +340,12 @@ export default function GeneratePage() {
   // We intentionally don't surface parse errors here — `scriptError` already
   // handles that on blur. Null = preview pane shows the empty state.
   const parsedScriptForPreview = useMemo<Pick<Script, 'format' | 'shots'> | null>(() => {
-    if (inputMode !== 'script') return null;
+    if (inputMode === 'prompt') return null;
     if (shots.length === 0) return null;
     return { format: scriptFormat, shots };
   }, [inputMode, shots, scriptFormat]);
 
-  const showPreview = inputMode === 'script';
+  const showPreview = inputMode !== 'prompt';
 
   return (
     <div className="space-y-6">
@@ -329,24 +367,24 @@ export default function GeneratePage() {
         <div className="space-y-6">
       <div className="card space-y-4">
         <div className="flex gap-1 p-1 bg-ink-800 rounded-lg w-fit">
-          <button
-            onClick={() => setInputMode('prompt')}
-            className={`px-4 py-1.5 rounded-md text-sm transition-colors ${
-              inputMode === 'prompt' ? 'bg-accent-500 text-white' : 'text-ink-500 hover:text-white'
-            }`}
-            disabled={running}
-          >
-            Desde prompt
-          </button>
-          <button
-            onClick={() => setInputMode('script')}
-            className={`px-4 py-1.5 rounded-md text-sm transition-colors ${
-              inputMode === 'script' ? 'bg-accent-500 text-white' : 'text-ink-500 hover:text-white'
-            }`}
-            disabled={running}
-          >
-            Script fijo (JSON)
-          </button>
+          {(
+            [
+              { id: 'prompt', label: 'Prompt' },
+              { id: 'guion', label: 'Guion' },
+              { id: 'script', label: 'Avanzado (JSON)' },
+            ] as const
+          ).map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setInputMode(t.id)}
+              className={`px-4 py-1.5 rounded-md text-sm transition-colors ${
+                inputMode === t.id ? 'bg-accent-500 text-white' : 'text-ink-500 hover:text-white'
+              }`}
+              disabled={running}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
 
         {inputMode === 'prompt' ? (
@@ -362,6 +400,36 @@ export default function GeneratePage() {
             <p className="text-xs text-ink-500 mt-1">
               Claude arma el script (texto + B-roll prompts + captions) a partir de esto.
             </p>
+          </div>
+        ) : inputMode === 'guion' ? (
+          <div className="space-y-3">
+            <div>
+              <label className="label">Tu guion (ya escrito)</label>
+              <textarea
+                className="input min-h-[200px]"
+                value={guion}
+                onChange={(e) => setGuion(e.target.value)}
+                disabled={running || convertingGuion}
+                placeholder="Pegá acá tu guion completo. Claude lo va a dividir en shots y escribir los B-roll prompts cinematográficos automáticamente."
+              />
+              <p className="text-xs text-ink-500 mt-1">
+                Pegás tu texto tal cual, hacés click en "Convertir a shots", y editás visualmente.
+              </p>
+            </div>
+            <div className="flex gap-2 items-center">
+              <button
+                type="button"
+                onClick={convertGuion}
+                disabled={running || convertingGuion || guion.trim().length === 0}
+                className="btn-primary"
+              >
+                {convertingGuion ? 'Convirtiendo…' : 'Convertir a shots'}
+              </button>
+              {shots.length > 0 && (
+                <span className="text-xs text-ink-500">{shots.length} shots listos — editalos abajo</span>
+              )}
+            </div>
+            {shots.length > 0 && <ShotList shots={shots} onChange={applyVisualShots} />}
           </div>
         ) : (
           <div className="space-y-3">
@@ -425,13 +493,15 @@ export default function GeneratePage() {
             </select>
           </div>
           <div>
-            <label className="label">{inputMode === 'script' ? 'Duración auto (s)' : 'Duración objetivo (s)'}</label>
+            <label className="label">
+              {inputMode === 'prompt' ? 'Duración objetivo (s)' : 'Duración auto (s)'}
+            </label>
             <input
               type="number"
               className="input"
               value={duration}
               onChange={(e) => setDuration(parseInt(e.target.value) || 30)}
-              disabled={running || inputMode === 'script'}
+              disabled={running || inputMode !== 'prompt'}
             />
           </div>
         </div>
@@ -456,7 +526,16 @@ export default function GeneratePage() {
 
         <BrandOverride value={brandOverride} onChange={setBrandOverride} />
 
-        <button onClick={start} disabled={running || (inputMode === 'prompt' && !prompt) || !!scriptError} className="btn-primary">
+        <button
+          onClick={start}
+          disabled={
+            running ||
+            (inputMode === 'prompt' && !prompt) ||
+            (inputMode === 'guion' && shots.length === 0) ||
+            (inputMode === 'script' && !!scriptError)
+          }
+          className="btn-primary"
+        >
           {running ? 'Generando...' : 'Generar video'}
         </button>
       </div>

@@ -1,6 +1,7 @@
 import fs from 'fs-extra';
 import path from 'node:path';
 import { z } from 'zod';
+import { HIGGSFIELD_PRESET_IDS, MOTION_INTENSITIES } from '../types';
 
 const STATE_DIR = path.join(process.cwd(), 'state');
 const SETTINGS_PATH = path.join(STATE_DIR, 'settings.json');
@@ -9,6 +10,8 @@ export const SettingsSchema = z.object({
   voice_provider: z.enum(['elevenlabs', 'cartesia']).default('elevenlabs'),
   video_provider_default: z.enum(['higgsfield', 'kling', 'runway', 'veo']).default('higgsfield'),
   storage_backend: z.enum(['local', 'r2']).default('local'),
+  higgsfield_preset_default: z.enum(HIGGSFIELD_PRESET_IDS).optional(),
+  motion_intensity_default: z.enum(MOTION_INTENSITIES).optional(),
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 

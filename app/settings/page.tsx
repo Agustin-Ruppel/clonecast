@@ -2,6 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
+import {
+  HIGGSFIELD_PRESET_IDS,
+  MOTION_INTENSITIES,
+  type HiggsfieldPresetId,
+  type MotionIntensity,
+} from '@/lib/types';
 
 type VoiceProvider = 'elevenlabs' | 'cartesia';
 type VideoProvider = 'higgsfield' | 'kling' | 'runway' | 'veo';
@@ -11,6 +17,8 @@ type Settings = {
   voice_provider: VoiceProvider;
   video_provider_default: VideoProvider;
   storage_backend: StorageBackend;
+  higgsfield_preset_default?: HiggsfieldPresetId;
+  motion_intensity_default?: MotionIntensity;
 };
 
 const VOICE_OPTIONS: { value: VoiceProvider; label: string; desc: string }[] = [
@@ -120,6 +128,63 @@ export default function SettingsPage() {
           })}
         </div>
       </section>
+
+      {settings.video_provider_default === 'higgsfield' && (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold">Higgsfield defaults</h2>
+          <p className="text-sm text-ink-500">Aplican a todos los shots nuevos que usen Higgsfield.</p>
+          <div className="card space-y-4">
+            <div>
+              <label className="label" htmlFor="hf-preset-default">Visual preset por defecto</label>
+              <select
+                id="hf-preset-default"
+                className="input"
+                value={settings.higgsfield_preset_default ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  update({
+                    higgsfield_preset_default:
+                      v === '' ? undefined : (v as HiggsfieldPresetId),
+                  });
+                }}
+              >
+                <option value="">Auto (sin preset fijo)</option>
+                {HIGGSFIELD_PRESET_IDS.map((id) => (
+                  <option key={id} value={id}>{id}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <span className="label">Motion intensity por defecto</span>
+              <div className="flex gap-2">
+                {(['', ...MOTION_INTENSITIES] as const).map((m) => {
+                  const selected = (settings.motion_intensity_default ?? '') === m;
+                  const label = m === '' ? 'Auto' : m;
+                  return (
+                    <button
+                      key={m || 'auto'}
+                      type="button"
+                      onClick={() =>
+                        update({
+                          motion_intensity_default:
+                            m === '' ? undefined : (m as MotionIntensity),
+                        })
+                      }
+                      className={`px-3 py-1.5 rounded-lg border text-sm capitalize ${
+                        selected
+                          ? 'border-accent-500 bg-accent-500/10 text-white'
+                          : 'border-ink-800 bg-ink-900/30 text-ink-300 hover:border-ink-700'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Storage</h2>

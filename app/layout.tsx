@@ -28,7 +28,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <Link href="/" className="btn-ghost">Dashboard</Link>
                 <Link href="/generate" className="btn-ghost">Generate</Link>
                 <Link href="/library" className="btn-ghost">Library</Link>
-                <Link href="/templates" className="btn-ghost">Templates</Link>
                 <Link href="/settings" className="btn-ghost">Settings</Link>
                 <WorkspaceSwitcher />
                 <Link href="/setup" className="btn-secondary ml-2">Setup</Link>

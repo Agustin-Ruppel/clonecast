@@ -1,5 +1,8 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import type { VoiceHealth, VoiceProviderStatus } from '@/lib/voice/health-check';
+
 export type VoiceMode = 'native' | 'custom';
 
 export interface VoicePickerProps {
@@ -14,9 +17,64 @@ export interface VoicePickerProps {
   onChange: (mode: VoiceMode) => void;
 }
 
-function maskId(id: string): string {
-  if (id.length <= 8) return id;
-  return `${id.slice(0, 4)}…${id.slice(-4)}`;
+interface StatusPillProps {
+  status: VoiceProviderStatus;
+}
+
+function StatusPill({ status }: StatusPillProps) {
+  if (status === 'ok') {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] text-emerald-300">
+        <span aria-hidden>🟢</span> Disponible
+      </span>
+    );
+  }
+  if (status === 'error') {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] text-rose-300">
+        <span aria-hidden>🔴</span> No responde
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] text-ink-500">
+      <span aria-hidden>⚪</span> Sin configurar
+    </span>
+  );
+}
+
+interface VoiceCardProps {
+  title: string;
+  subtitle: string;
+  status: VoiceProviderStatus;
+  selected: boolean;
+  onSelect: () => void;
+}
+
+function VoiceCard({ title, subtitle, status, selected, onSelect }: VoiceCardProps) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`card text-left transition-colors w-full h-full ${
+        selected ? 'ring-2 ring-accent-500' : 'hover:border-accent-500/40'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="font-medium text-sm">{title}</div>
+        <span
+          aria-hidden
+          className={`w-4 h-4 rounded-full border flex-shrink-0 ${
+            selected ? 'border-accent-500 bg-accent-500' : 'border-ink-600'
+          }`}
+        />
+      </div>
+      <div className="text-xs text-ink-500 mt-1">{subtitle}</div>
+      <div className="mt-2">
+        <StatusPill status={status} />
+      </div>
+    </button>
+  );
 }
 
 export function VoicePicker({
@@ -25,55 +83,69 @@ export function VoicePicker({
   customVoiceId,
   onChange,
 }: VoicePickerProps) {
-  const nativeAvailable = !!selectedAvatar?.default_voice_id;
-  const isNative = selectedVoiceMode === 'native';
-  const isCustom = selectedVoiceMode === 'custom';
+  const [health, setHealth] = useState<VoiceHealth | null>(null);
+  const [healthLoaded, setHealthLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/voice/health')
+      .then((r) => (r.ok ? (r.json() as Promise<VoiceHealth>) : null))
+      .then((h) => {
+        if (cancelled) return;
+        setHealth(h);
+        setHealthLoaded(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setHealthLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Smart default: if health says elevenlabs is the pick, switch native→custom once.
+  useEffect(() => {
+    if (!healthLoaded || !health) return;
+    if (health.defaultPick === 'elevenlabs' && selectedVoiceMode === 'native') {
+      onChange('custom');
+    }
+    // Only run on first health load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [healthLoaded]);
+
+  const heygenStatus: VoiceProviderStatus = health?.heygen ?? 'unconfigured';
+  const elevenStatus: VoiceProviderStatus = health?.elevenlabs ?? 'unconfigured';
+
+  const heygenSubtitle = selectedAvatar?.default_voice_name
+    ? `Voz: ${selectedAvatar.default_voice_name}`
+    : selectedAvatar?.default_voice_id
+      ? `Voz: ${selectedAvatar.default_voice_id}`
+      : 'Sin voz nativa configurada';
+
+  const elevenSubtitle = customVoiceId ? 'Voz clonada propia' : 'Sin voz configurada';
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <button
-        type="button"
-        onClick={() => nativeAvailable && onChange('native')}
-        disabled={!nativeAvailable}
-        className={`card text-left transition-colors ${
-          isNative ? 'ring-2 ring-accent-500' : 'hover:border-accent-500/40'
-        } ${!nativeAvailable ? 'opacity-50 cursor-not-allowed' : ''}`}
-      >
-        <div className="font-medium text-sm">Voz nativa del avatar</div>
-        <div className="text-xs text-ink-500 mt-1">
-          {nativeAvailable
-            ? selectedAvatar?.default_voice_name ?? selectedAvatar?.default_voice_id
-            : 'Ninguna disponible — elegí un avatar con voz nativa'}
-        </div>
-        <div className="text-[10px] text-ink-500 mt-2">
-          Recomendado por HeyGen. No requiere ElevenLabs.
-        </div>
-      </button>
-
-      <button
-        type="button"
-        onClick={() => onChange('custom')}
-        className={`card text-left transition-colors ${
-          isCustom ? 'ring-2 ring-accent-500' : 'hover:border-accent-500/40'
-        }`}
-      >
-        <div className="font-medium text-sm">Voz clonada propia (ElevenLabs)</div>
-        <div className="text-xs text-ink-500 mt-1">
-          {customVoiceId ? (
-            <>Voice ID: <code className="text-accent-400">{maskId(customVoiceId)}</code></>
-          ) : (
-            <>
-              Configurá una en{' '}
-              <a href="/settings" className="text-accent-400 underline">
-                Settings
-              </a>
-            </>
-          )}
-        </div>
-        <div className="text-[10px] text-ink-500 mt-2">
-          Usa tu voz clonada en ElevenLabs.
-        </div>
-      </button>
+    <div className="space-y-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <VoiceCard
+          title="HeyGen native"
+          subtitle={heygenSubtitle}
+          status={heygenStatus}
+          selected={selectedVoiceMode === 'native'}
+          onSelect={() => onChange('native')}
+        />
+        <VoiceCard
+          title="ElevenLabs"
+          subtitle={elevenSubtitle}
+          status={elevenStatus}
+          selected={selectedVoiceMode === 'custom'}
+          onSelect={() => onChange('custom')}
+        />
+      </div>
+      <p className="text-[10px] text-ink-500">
+        Default elegido por disponibilidad. Cambiá si necesitás.
+      </p>
     </div>
   );
 }

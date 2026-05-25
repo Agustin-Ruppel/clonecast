@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { ShotPlan } from '@/lib/planner/types';
-import type { JobState } from '@/lib/types';
+import type { BrandPack, JobState } from '@/lib/types';
 import { StepProgress, type Phase } from '@/components/generate-v2/StepProgress';
 import { WriteStep, type WritePayload } from '@/components/generate-v2/WriteStep';
 import { PlanStep } from '@/components/generate-v2/PlanStep';
@@ -14,6 +14,7 @@ export default function GenerateV2Page() {
   const [writePayload, setWritePayload] = useState<WritePayload | null>(null);
   const [plan, setPlan] = useState<ShotPlan | null>(null);
   const [renderedJob, setRenderedJob] = useState<JobState | null>(null);
+  const [brandOverride, setBrandOverride] = useState<Partial<BrandPack> | null>(null);
 
   return (
     <div className="space-y-6">
@@ -37,6 +38,8 @@ export default function GenerateV2Page() {
             setPlan(p);
             setPhase('render');
           }}
+          brandOverride={brandOverride}
+          onBrandOverrideChange={setBrandOverride}
         />
       )}
 
@@ -44,6 +47,7 @@ export default function GenerateV2Page() {
         <RenderStep
           plan={plan}
           writePayload={writePayload}
+          brandOverride={brandOverride}
           onCancel={() => setPhase('plan')}
           onDone={(job) => {
             setRenderedJob(job);

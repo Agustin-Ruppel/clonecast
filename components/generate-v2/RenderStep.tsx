@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { ShotPlan } from '@/lib/planner/types';
-import type { JobState, Shot, Script } from '@/lib/types';
+import type { BrandPack, JobState, Shot, Script } from '@/lib/types';
 import type { WritePayload } from './WriteStep';
 
 const STEPS = ['script', 'audio', 'video', 'transcribe', 'compose', 'render'] as const;
@@ -20,6 +20,7 @@ const STEP_LABELS: Record<Step, string> = {
 export interface RenderStepProps {
   plan: ShotPlan;
   writePayload: WritePayload;
+  brandOverride?: Partial<BrandPack> | null;
   onDone: (job: JobState) => void;
   onCancel: () => void;
 }
@@ -52,7 +53,7 @@ function planToScript(plan: ShotPlan, writePayload: WritePayload): Script {
   };
 }
 
-export function RenderStep({ plan, writePayload, onDone, onCancel }: RenderStepProps) {
+export function RenderStep({ plan, writePayload, brandOverride = null, onDone, onCancel }: RenderStepProps) {
   const [progress, setProgress] = useState<Partial<Record<Step, { progress: number; message?: string }>>>({});
   const [error, setError] = useState<string | null>(null);
   const [currentMessage, setCurrentMessage] = useState<string>('Iniciando…');
@@ -69,10 +70,12 @@ export function RenderStep({ plan, writePayload, onDone, onCancel }: RenderStepP
       const duration = plan.total_duration_sec;
       const mode = writePayload.avatarId ? 'reel-avatar' : 'reel-broll';
       try {
+        const body: Record<string, unknown> = { script, mode, duration };
+        if (brandOverride) body.brandOverride = brandOverride;
         const res = await fetch('/api/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ script, mode, duration }),
+          body: JSON.stringify(body),
         });
         if (!res.body) {
           setError('No response body');

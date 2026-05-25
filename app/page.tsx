@@ -4,6 +4,7 @@ import { ProviderKeys } from '@/lib/types';
 import { getSecret, mask } from '@/lib/core/secrets';
 import { Disclosure } from '@/components/ui/Disclosure';
 import { Empty } from '@/components/ui/Empty';
+import { EntryModeCard } from '@/components/EntryModeCard';
 
 export default async function DashboardPage() {
   const status = await getSetupStatus();
@@ -99,9 +100,34 @@ export default async function DashboardPage() {
         </section>
       </div>
 
-      <section className="grid grid-cols-4 gap-4">
-        <QuickAction href="/generate" title="Generar video" desc="Idea → MP4 en minutos" emoji="✨" disabled={!status.complete} />
-        <QuickAction href="/templates" title="Templates HeyGen" desc="Generá desde un template" emoji="🧩" />
+      <section className="space-y-3">
+        <h2 className="text-sm uppercase tracking-wider text-ink-500">¿Qué querés crear hoy?</h2>
+        <div className="grid grid-cols-3 gap-4">
+          <EntryModeCard
+            icon="✨"
+            title="Reel con IA"
+            description="Pegás un guion, la IA arma el plan con avatar + B-rolls intercalados."
+            ctaLabel="Crear"
+            href="/generate"
+          />
+          <EntryModeCard
+            icon="📦"
+            title="Desde template"
+            description="Tenés un template pre-armado en HeyGen y cambiás variables."
+            ctaLabel="Usar template"
+            href="/templates"
+          />
+          <EntryModeCard
+            icon="📷"
+            title="Sin cámara"
+            description="ElevenLabs voice + Higgsfield B-rolls, sin avatar HeyGen."
+            ctaLabel="Crear"
+            href="/quick"
+          />
+        </div>
+      </section>
+
+      <section className="grid grid-cols-2 gap-4">
         <QuickAction href="/library" title="Library" desc={`${jobs.length} videos guardados`} emoji="📂" />
         <QuickAction href="/setup" title="Configuración" desc="Keys, character, brand" emoji="⚙️" />
       </section>

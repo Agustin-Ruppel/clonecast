@@ -10,6 +10,8 @@ export interface Database {
   avatars_cache: AvatarsCacheTable;
   secrets: SecretsTable;
   schema_version: SchemaVersionTable;
+  broll_options: BrollOptionsTable;
+  style_thumbnails: StyleThumbnailsTable;
 }
 
 export interface JobsTable {
@@ -25,6 +27,28 @@ export interface JobsTable {
   steps_json: string;
   /** Upstream provider job id (e.g. HeyGen video_id) for webhook lookup. */
   provider_job_id: string | null;
+  /** URL of the rendered avatar+voice track (background-generated). */
+  avatar_video_url: string | null;
+}
+
+export interface BrollOptionsTable {
+  id: string;
+  job_id: string;
+  shot_index: number;
+  video_url: string;
+  thumbnail_url: string | null;
+  model_used: string;
+  style: string;
+  generated_at: string;
+  chosen: number;
+}
+
+export interface StyleThumbnailsTable {
+  style_id: string;
+  thumbnail_url: string;
+  label_es: string;
+  description_es: string;
+  generated_at: string;
 }
 
 export interface CreatorProfileTable {

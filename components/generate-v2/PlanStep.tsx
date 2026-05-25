@@ -5,13 +5,14 @@ import type { ShotPlan, PlannedShot } from '@/lib/planner/types';
 import type { CaptionStyleId } from '@/lib/composition/caption-styles';
 import { CAPTION_STYLES } from '@/lib/composition/caption-styles';
 import type { WritePayload } from './WriteStep';
-import { ShotPlanCard } from './ShotPlanCard';
+import { ShotCard } from './ShotCard';
+import { ShotEditDrawer } from './ShotEditDrawer';
 import CaptionStylePicker from '@/components/wizard/CaptionStylePicker';
 import BrandOverride from '@/components/BrandOverride';
 import { Surface } from '@/components/ui/Surface';
-import { Toolbar } from '@/components/ui/Toolbar';
+import { useToast } from '@/components/ui/Toast';
 import type { BrandPack, HiggsfieldMode } from '@/lib/types';
-import { ArrowLeft, ArrowRight, RotateCcw, Plus } from 'lucide-react';
+import { ArrowLeft, ArrowRight, RotateCcw, Plus, Sparkles } from 'lucide-react';
 
 export interface PlanStepProps {
   writePayload: WritePayload;
@@ -37,6 +38,7 @@ export function PlanStep({
   brandOverride = null,
   onBrandOverrideChange,
 }: PlanStepProps) {
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editablePlan, setEditablePlan] = useState<ShotPlan | null>(null);
@@ -46,6 +48,7 @@ export function PlanStep({
     brandOverride,
   );
   const [showBrandOverride, setShowBrandOverride] = useState(false);
+  const [selectedShotIndex, setSelectedShotIndex] = useState<number | null>(null);
 
   useEffect(() => {
     void fetch('/api/settings')
@@ -121,6 +124,16 @@ export function PlanStep({
     });
   };
 
+  const deleteShot = (idx: number) => {
+    setEditablePlan((cur) => {
+      if (!cur) return cur;
+      if (cur.shots.length <= 1) return cur; // keep at least one
+      const shots = cur.shots.filter((_, i) => i !== idx);
+      const total = shots.reduce((a, s) => a + s.duration_sec, 0);
+      return { ...cur, shots, total_duration_sec: total };
+    });
+  };
+
   const addShot = () => {
     setEditablePlan((cur) => {
       if (!cur) return cur;
@@ -133,24 +146,25 @@ export function PlanStep({
     });
   };
 
+  // TODO: implement /api/plan/shot/[index] for single-shot regeneration.
+  // For now we surface a coming-soon toast.
+  const regenerateShot = (_idx: number) => {
+    toast.show('Coming soon: regenerar shot individual', 'info');
+  };
+
   if (loading) {
     return (
       <div className="space-y-4">
         <div className="text-meta">Planeando los shots con Claude…</div>
-        <Surface padded={false}>
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="px-4 py-3 border-b border-border-subtle last:border-b-0 animate-pulse">
-              <div className="flex gap-3">
-                <div className="rounded bg-surface-2" style={{ width: 60, height: 80 }} />
-                <div className="flex-1 space-y-2">
-                  <div className="h-3 w-20 bg-surface-2 rounded" />
-                  <div className="h-4 w-full bg-surface-2 rounded" />
-                  <div className="h-3 w-2/3 bg-surface-2 rounded" />
-                </div>
-              </div>
-            </div>
+        <div className="flex gap-3 overflow-x-auto">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex-shrink-0 rounded-lg bg-surface border border-border-subtle animate-pulse"
+              style={{ width: 180, height: 280 }}
+            />
           ))}
-        </Surface>
+        </div>
       </div>
     );
   }
@@ -178,9 +192,12 @@ export function PlanStep({
   const captionLabel =
     CAPTION_STYLES.find((s) => s.id === (editablePlan.caption_style ?? 'pill-karaoke'))?.label ?? '—';
 
+  const selectedShot =
+    selectedShotIndex !== null ? editablePlan.shots[selectedShotIndex] ?? null : null;
+
   return (
     <div style={{ rowGap: 'var(--space-section)' }} className="flex flex-col">
-      <div className="space-y-3">
+      <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <button
             type="button"
@@ -189,6 +206,14 @@ export function PlanStep({
           >
             <ArrowLeft className="size-3.5" /> Volver
           </button>
+        </div>
+
+        {/* Header: title + stats */}
+        <div className="flex items-end justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <Sparkles className="size-6 text-[var(--accent)]" />
+            <h1 className="text-hero">Tu plan</h1>
+          </div>
           <div className="text-meta num text-text-secondary">
             <span className="text-text-primary">{editablePlan.shots.length}</span> shots ·{' '}
             <span className="text-text-primary">{editablePlan.total_duration_sec}s</span> ·{' '}
@@ -196,51 +221,69 @@ export function PlanStep({
           </div>
         </div>
 
-        <h1 className="text-hero">Tu plan</h1>
-
         {editablePlan.rationale && (
           <div className="text-meta italic">{editablePlan.rationale}</div>
         )}
 
-        <Surface padded={false}>
+        {/* Storyboard: horizontal flex, wraps on smaller viewports */}
+        <div
+          className="flex flex-wrap gap-3 pb-2"
+          data-testid="storyboard"
+          role="list"
+          aria-label="Storyboard de shots"
+        >
           {editablePlan.shots.map((shot, idx) => (
-            <ShotPlanCard
+            <ShotCard
               key={idx}
               shot={shot}
               index={idx}
-              onChange={(next) => updateShot(idx, next)}
               avatarPreviewUrl={avatarPreview}
-              higgsfieldDefaultMode={higgsfieldDefaultMode}
+              onClick={() => setSelectedShotIndex(idx)}
+              onRegenerate={() => regenerateShot(idx)}
+              onDelete={() => deleteShot(idx)}
             />
           ))}
-        </Surface>
 
-        <Toolbar className="pt-1">
-          <button
-            type="button"
-            onClick={fetchPlan}
-            className="text-text-secondary hover:text-text-primary inline-flex items-center gap-1"
-          >
-            <RotateCcw className="size-3.5" /> Regenerar plan
-          </button>
-          <span className="text-text-muted">·</span>
+          {/* Add-shot placeholder card */}
           <button
             type="button"
             onClick={addShot}
-            className="text-text-secondary hover:text-text-primary inline-flex items-center gap-1"
+            data-testid="add-shot-card"
+            className="flex-shrink-0 flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border-subtle text-text-secondary hover:text-text-primary hover:border-[var(--accent)]/40 hover:bg-surface/50 transition-colors"
+            style={{ width: 180, height: 280 }}
           >
-            <Plus className="size-3.5" /> Agregar shot
+            <Plus className="size-6" />
+            <span className="text-meta">Agregar shot</span>
           </button>
-          <span className="text-text-muted">·</span>
+        </div>
+
+        {/* Toolbar */}
+        <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={fetchPlan}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border-subtle px-3 py-1.5 text-meta text-text-primary hover:border-[var(--accent)]/40 hover:bg-surface-2"
+            >
+              <RotateCcw className="size-3.5" /> Regenerar plan
+            </button>
+            <button
+              type="button"
+              onClick={addShot}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border-subtle px-3 py-1.5 text-meta text-text-primary hover:border-[var(--accent)]/40 hover:bg-surface-2"
+            >
+              <Plus className="size-3.5" /> Agregar shot
+            </button>
+          </div>
           <button
             type="button"
             onClick={() => setShowBrandOverride((v) => !v)}
-            className="text-text-secondary hover:text-text-primary"
+            className="text-meta text-text-secondary hover:text-text-primary"
             data-testid="brand-override-toggle"
           >
-            {showBrandOverride ? '▾' : '‹'} Override marca
+            {showBrandOverride ? '▾' : '‹'} Marca personalizada
           </button>
-        </Toolbar>
+        </div>
 
         {showBrandOverride && (
           <Surface data-testid="brand-override-section">
@@ -280,6 +323,28 @@ export function PlanStep({
           Generar video <ArrowRight className="size-4" />
         </button>
       </div>
+
+      {/* Drawer (mounted at end of tree, controlled by selectedShotIndex) */}
+      <ShotEditDrawer
+        shot={selectedShot}
+        index={selectedShotIndex ?? 0}
+        totalShots={editablePlan.shots.length}
+        higgsfieldDefaultMode={higgsfieldDefaultMode}
+        onSave={(patched) => {
+          if (selectedShotIndex !== null) updateShot(selectedShotIndex, patched);
+          setSelectedShotIndex(null);
+        }}
+        onCancel={() => setSelectedShotIndex(null)}
+        onRegenerate={() => {
+          if (selectedShotIndex !== null) regenerateShot(selectedShotIndex);
+        }}
+        onDelete={() => {
+          if (selectedShotIndex !== null) {
+            deleteShot(selectedShotIndex);
+            setSelectedShotIndex(null);
+          }
+        }}
+      />
     </div>
   );
 }

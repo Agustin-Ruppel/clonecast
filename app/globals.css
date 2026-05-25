@@ -2,9 +2,72 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* ─── Spacing ─────────────────────── */
+  --space-page-py: 2.5rem;
+  --space-section: 4rem;
+  --space-block: 1.5rem;
+  --space-control: 0.75rem;
+  --space-inline: 0.5rem;
+
+  /* ─── Type scale ──────────────────── */
+  --text-hero: 2rem;
+  --text-title: 1.25rem;
+  --text-body: 0.9375rem;
+  --text-meta: 0.8125rem;
+  --text-micro: 0.6875rem;
+
+  /* ─── Weights ─────────────────────── */
+  --weight-strong: 600;
+  --weight-normal: 400;
+  --weight-light: 300;
+
+  /* ─── Surfaces (background) ───────── */
+  --bg-canvas: #0A0A0B;
+  --bg-surface: #131318;
+  --bg-surface-2: #1A1A21;
+  --bg-surface-3: #232330;
+
+  /* ─── Borders ─────────────────────── */
+  --border-subtle: #1F1F26;
+  --border-default: #2A2A34;
+  --border-strong: #3D3D4A;
+
+  /* ─── Text (WCAG-passing) ─────────── */
+  --text-primary: #FFFFFF;
+  --text-secondary: #B8B8C4;
+  --text-muted: #8A8A99;
+
+  /* ─── Accent ──────────────────────── */
+  --accent: #7C5CFF;
+  --accent-hover: #5E3FE6;
+  --accent-fg: #FFFFFF;
+
+  /* ─── Intents (for status only) ───── */
+  --intent-success: #34D399;
+  --intent-warning: #F59E0B;
+  --intent-error: #F87171;
+  --intent-info: #60A5FA;
+
+  /* ─── Radius ──────────────────────── */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 999px;
+
+  /* ─── Elevation ───────────────────── */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.5);
+  --shadow-lg: 0 20px 40px rgba(0,0,0,0.6);
+  --ring-focus: 0 0 0 2px var(--accent), 0 0 0 4px rgba(124,92,255,0.2);
+}
+
 @layer base {
   html, body {
-    @apply bg-ink-950 text-white antialiased;
+    background: var(--bg-canvas);
+    color: var(--text-primary);
+    font-size: var(--text-body);
+    @apply antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
   * { @apply border-ink-800; }
@@ -33,4 +96,24 @@
   .pill-success { @apply pill bg-emerald-500/10 text-emerald-400 border-emerald-500/20; }
   .pill-warning { @apply pill bg-amber-500/10 text-amber-400 border-amber-500/20; }
   .pill-error { @apply pill bg-rose-500/10 text-rose-400 border-rose-500/20; }
+
+  /* ─── Type utilities ──────────────── */
+  .text-hero { font-size: var(--text-hero); font-weight: var(--weight-strong); letter-spacing: -0.02em; line-height: 1.15; }
+  .text-title { font-size: var(--text-title); font-weight: var(--weight-strong); letter-spacing: -0.01em; line-height: 1.25; }
+  .text-body { font-size: var(--text-body); line-height: 1.5; }
+  .text-meta { font-size: var(--text-meta); color: var(--text-secondary); }
+  .text-micro { font-size: var(--text-micro); letter-spacing: 0.02em; }
+  .text-muted { color: var(--text-muted); }
+  .num { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
+
+  /* ─── Surface (the new container) ── */
+  .surface {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--space-block);
+  }
+
+  /* ─── Focus ring helper ──────────── */
+  .focus-ring:focus-visible { outline: none; box-shadow: var(--ring-focus); }
 }

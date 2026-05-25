@@ -50,6 +50,7 @@ function planToScript(plan: ShotPlan, writePayload: WritePayload): Script {
     language: 'es-AR',
     shots,
     caption_style: plan.caption_style ?? 'pill-karaoke',
+    avatar_id: writePayload.avatarId ?? undefined,
   };
 }
 

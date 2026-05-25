@@ -98,8 +98,17 @@ export async function runPipeline(opts: {
         .map((s) => ({ text: s.text! }));
       const publicUrl = process.env.CLONECAST_PUBLIC_URL;
       const callbackUrl = publicUrl ? `${publicUrl.replace(/\/$/, '')}/api/heygen/webhook` : undefined;
+      // Avatar priority: script.avatar_id (set by WriteStep from AvatarPicker)
+      // → HEYGEN_AVATAR_ID env override. NO 'mock' fallback — HeyGen would
+      // reject it with HTTP 400 and the error would be opaque to the user.
+      const avatarId = script.avatar_id ?? process.env.HEYGEN_AVATAR_ID;
+      if (!avatarId) {
+        throw new Error(
+          'No avatar selected. Pick one in WriteStep (AvatarPicker) or set HEYGEN_AVATAR_ID in .env.local.',
+        );
+      }
       const heyJob = await createAvatarVideo({
-        avatarId: process.env.HEYGEN_AVATAR_ID || 'mock',
+        avatarId,
         voiceId,
         scenes,
         dimensions: dims,

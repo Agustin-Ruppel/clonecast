@@ -126,6 +126,10 @@ export const ScriptSchema = z.object({
   // Falls back to ELEVENLABS_VOICE_ID at render time when absent.
   voice_id: z.string().optional(),
   voice_source: z.enum(['native', 'custom']).optional(),
+  // HeyGen avatar selected in WriteStep. Propagated to the pipeline so the
+  // /v2/video/generate call has a real avatar_id (instead of falling back to
+  // env or the literal 'mock' which HeyGen rejects with HTTP 400).
+  avatar_id: z.string().optional(),
 });
 export type Script = z.infer<typeof ScriptSchema>;
 

@@ -69,6 +69,7 @@ describe('pipeline: coalesce HeyGen avatar shots into 1 call', () => {
       duration_target: 16,
       language: 'es-AR',
       caption_style: 'pill-karaoke',
+      avatar_id: 'test-avatar-id',
       shots: [
         // 3 avatar shots — each contributes a "scene" to the single HeyGen call.
         { type: 'speak', text: 'Hola, esto es un hook.', caption_style: 'pill-karaoke' },
@@ -130,6 +131,7 @@ describe('pipeline: coalesce HeyGen avatar shots into 1 call', () => {
       duration_target: 8,
       language: 'es-AR',
       caption_style: 'pill-karaoke',
+      avatar_id: 'test-avatar-id',
       shots: [
         {
           type: 'broll_only',

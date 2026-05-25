@@ -83,6 +83,14 @@ export async function createAvatarVideo(opts: CreateAvatarVideoOpts): Promise<He
     opts.scenes && opts.scenes.length > 0
       ? opts.scenes.map((s) => s.text)
       : [opts.text ?? ''];
+
+  if (!opts.avatarId) throw new Error('HeyGen: missing avatarId');
+  if (!opts.voiceId) throw new Error('HeyGen: missing voiceId (avatar default_voice_id was not propagated)');
+  for (const t of sceneTexts) {
+    if (!t || !t.trim()) throw new Error('HeyGen: one of the scenes has empty input_text');
+    if (t.length > 1500) throw new Error(`HeyGen: scene text exceeds 1500 chars (got ${t.length}). Split shots smaller.`);
+  }
+
   const videoInputs = sceneTexts.map((text) => ({
     character: { type: 'avatar', avatar_id: opts.avatarId, avatar_style: 'normal' },
     voice: { type: 'text', input_text: text, voice_id: opts.voiceId },
@@ -99,9 +107,36 @@ export async function createAvatarVideo(opts: CreateAvatarVideoOpts): Promise<He
     headers: { 'X-Api-Key': key, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (statusCode !== 200) throw new Error(`HeyGen create failed: HTTP ${statusCode}`);
-  const data: any = await resBody.json();
-  return { video_id: data.data.video_id, status: 'pending', api_version: version };
+
+  // HeyGen returns the failure reason in the response body — always surface it
+  // so callers (and the user) can see WHY the create failed (bad avatar_id,
+  // invalid voice_id for that avatar, dimension out of range, etc).
+  const rawText = await resBody.text();
+  let parsed: any = null;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch {
+    // keep rawText as-is
+  }
+
+  if (statusCode !== 200) {
+    const apiMsg =
+      parsed?.error?.message ||
+      parsed?.message ||
+      parsed?.error ||
+      rawText?.slice(0, 500) ||
+      'no body';
+    const apiCode = parsed?.error?.code || parsed?.code || '';
+    // Echo the request shape too — invaluable when debugging which field HeyGen rejected.
+    console.error('[heygen.createAvatarVideo] HTTP', statusCode, 'code=', apiCode, 'msg=', apiMsg);
+    console.error('[heygen.createAvatarVideo] request body =', JSON.stringify(body));
+    throw new Error(`HeyGen create failed: HTTP ${statusCode} — ${apiCode ? `[${apiCode}] ` : ''}${apiMsg}`);
+  }
+
+  if (!parsed?.data?.video_id) {
+    throw new Error(`HeyGen create: unexpected 200 response shape — ${rawText.slice(0, 300)}`);
+  }
+  return { video_id: parsed.data.video_id, status: 'pending', api_version: version };
 }
 
 export async function pollAvatarVideo(videoId: string): Promise<HeyGenJob> {

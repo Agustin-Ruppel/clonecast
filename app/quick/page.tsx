@@ -3,7 +3,11 @@
 import { useState } from 'react';
 import type { ShotPlan } from '@/lib/planner/types';
 import type { JobState } from '@/lib/types';
-import { StepProgress, type Phase } from '@/components/generate-v2/StepProgress';
+import { StepProgress } from '@/components/generate-v2/StepProgress';
+
+// /quick still uses the legacy 4-phase flow (write → plan → render → review)
+// pending the broll-picker port. Local Phase type until then.
+type Phase = 'write' | 'plan' | 'render' | 'review';
 import type { WritePayload } from '@/components/generate-v2/WriteStep';
 import { QuickWriteStep } from '@/components/quick/WriteStep';
 import { PlanStep } from '@/components/generate-v2/PlanStep';
@@ -18,7 +22,7 @@ export default function QuickPage() {
 
   return (
     <div className="space-y-6">
-      <StepProgress phase={phase} />
+      <StepProgress phase={phase === 'render' ? 'composite' : phase} />
 
       {phase === 'write' && (
         <QuickWriteStep

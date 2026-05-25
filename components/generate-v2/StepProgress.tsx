@@ -1,12 +1,21 @@
 'use client';
 
-export type Phase = 'write' | 'plan' | 'render' | 'review';
+/**
+ * Phases for the v0.4 broll-picker flow:
+ *   write         — pegar guion + elegir avatar/voz
+ *   plan          — Claude parte el guion en shots, usuario edita
+ *   broll-picker  — avatar renderiza en BG mientras el usuario elige brolls
+ *   composite     — SSE: transcribir → componer → renderizar MP4
+ *   review        — reproducir + descargar + regenerar
+ */
+export type Phase = 'write' | 'plan' | 'broll-picker' | 'composite' | 'review';
 
 const STEPS: { id: Phase; label: string }[] = [
-  { id: 'write', label: 'Write' },
-  { id: 'plan', label: 'Plan' },
-  { id: 'render', label: 'Render' },
-  { id: 'review', label: 'Review' },
+  { id: 'write', label: 'Escribí' },
+  { id: 'plan', label: 'Guion' },
+  { id: 'broll-picker', label: 'B-rolls' },
+  { id: 'composite', label: 'Componer' },
+  { id: 'review', label: 'Listo' },
 ];
 
 export interface StepProgressProps {

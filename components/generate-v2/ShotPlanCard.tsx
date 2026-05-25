@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import type { PlannedShot } from '@/lib/planner/types';
-import { CAPTION_STYLE_IDS } from '@/lib/composition/caption-styles';
-import type { CaptionStyleId, BrollModelId, HiggsfieldMode } from '@/lib/types';
+import type { BrollModelId, HiggsfieldMode } from '@/lib/types';
 import { BROLL_MODEL_IDS, HIGGSFIELD_MODES } from '@/lib/types';
 
 const HIGGSFIELD_MODE_TOOLTIPS: Record<HiggsfieldMode, string> = {
@@ -187,20 +186,6 @@ export function ShotPlanCard({ shot, index, onChange, avatarPreviewUrl }: ShotPl
                     <p className="text-[10px] text-ink-500 mt-1">{HIGGSFIELD_MODE_TOOLTIPS[higgsfieldMode]}</p>
                   </div>
                 )}
-                <div>
-                  <label className="label">Caption style</label>
-                  <select
-                    className="input"
-                    value={shot.caption_style}
-                    onChange={(e) => patch({ caption_style: e.target.value as CaptionStyleId })}
-                  >
-                    {CAPTION_STYLE_IDS.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
                 <div className="sm:col-span-2">
                   <label className="label">Duración: {shot.duration_sec}s</label>
                   <input

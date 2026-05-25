@@ -48,6 +48,7 @@ function planToScript(plan: ShotPlan, writePayload: WritePayload): Script {
     duration_target: plan.total_duration_sec,
     language: 'es-AR',
     shots,
+    caption_style: plan.caption_style ?? 'pill-karaoke',
   };
 }
 

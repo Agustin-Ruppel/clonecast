@@ -40,7 +40,18 @@ export interface HeyGenJob {
 export interface CreateAvatarVideoOpts {
   avatarId: string;
   voiceId: string;
-  text: string;
+  /**
+   * Legacy single-scene API: pass the full text to speak. When `scenes` is
+   * provided this field is ignored (the scenes drive the video_inputs[]).
+   */
+  text?: string;
+  /**
+   * Multi-scene API. HeyGen v2/v3 `video/generate` both accept
+   * `video_inputs[]` where each item is one scene. Passing N scenes results
+   * in ONE concatenated MP4 — used by the pipeline to coalesce per-shot
+   * avatar calls into a single API call (much cheaper + faster than N calls).
+   */
+  scenes?: { text: string }[];
   dimensions: { width: number; height: number };
   /**
    * Optional public URL that HeyGen will POST events to when the job completes.
@@ -66,13 +77,19 @@ export async function createAvatarVideo(opts: CreateAvatarVideoOpts): Promise<He
   // v2 path (current default): /v2/video/generate
   const path = version === 'v3' ? '/v3/video/generate' : '/v2/video/generate';
 
+  // Build video_inputs[] from `scenes` when present, otherwise fall back to
+  // the legacy single-text shape so existing callers keep working.
+  const sceneTexts =
+    opts.scenes && opts.scenes.length > 0
+      ? opts.scenes.map((s) => s.text)
+      : [opts.text ?? ''];
+  const videoInputs = sceneTexts.map((text) => ({
+    character: { type: 'avatar', avatar_id: opts.avatarId, avatar_style: 'normal' },
+    voice: { type: 'text', input_text: text, voice_id: opts.voiceId },
+  }));
+
   const body: Record<string, unknown> = {
-    video_inputs: [
-      {
-        character: { type: 'avatar', avatar_id: opts.avatarId, avatar_style: 'normal' },
-        voice: { type: 'text', input_text: opts.text, voice_id: opts.voiceId },
-      },
-    ],
+    video_inputs: videoInputs,
     dimension: opts.dimensions,
   };
   if (opts.callbackUrl) body.callback_url = opts.callbackUrl;

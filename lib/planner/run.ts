@@ -20,20 +20,26 @@ Output STRICT JSON only:
     "duration_sec": 3-7,
     "visual_hint_es": "what we see, in Spanish",
     "broll_prompt_en": "cinematic English prompt for video model" | null,
-    "caption_style": "pill-karaoke" | "kinetic-slam" | "highlight" | "emoji-pop" | "gradient-fill" | "neon-glow" | (other)
+    "caption_style": "pill-karaoke"  // back-compat — same for every shot, mirror the plan-level value
   }],
   "total_duration_sec": number,
   "estimated_cost_usd": number,
-  "rationale": "1-2 sentence Spanish explanation"
+  "rationale": "1-2 sentence Spanish explanation",
+  "caption_style": "pill-karaoke" | "kinetic-slam" | "highlight" | "emoji-pop" | "gradient-fill" | "neon-glow" | (other)
 }
 
 Rules:
-- Hook (1st): type='avatar', caption_style='kinetic-slam'
-- CTA (last if it sounds like one): type='avatar', caption_style='neon-glow'
+- Hook (1st): type='avatar'
+- CTA (last if it sounds like one): type='avatar'
 - Body: prefer 'avatar-with-broll' when text mentions concrete nouns
 - 'broll-only' sparingly, only for purely descriptive moments
 - broll_prompt_en is null when type='avatar'
-- Total duration close to natural speech length (~15 chars/sec)`;
+- Total duration close to natural speech length (~15 chars/sec)
+- caption_style is now a SINGLE plan-level choice that applies to the entire
+  video. Pick one style for the whole piece (default 'pill-karaoke'; use
+  'kinetic-slam' for energetic / hook-heavy scripts, 'neon-glow' for CTA-
+  centric promos). Mirror that value on each shot's caption_style for back-
+  compat.`;
 
 export async function planShots(opts: PlannerOpts): Promise<ShotPlan> {
   const nativeVoiceId = opts.avatar?.default_voice_id;
@@ -90,5 +96,6 @@ function deterministicPlan(opts: { guion: string; format: string }): ShotPlan {
     total_duration_sec: total,
     estimated_cost_usd: total * 0.12,
     rationale: `Plan determinístico (mock): ${shots.length} shots de ${total}s total.`,
+    caption_style: 'pill-karaoke',
   };
 }

@@ -97,6 +97,12 @@ export const ShotSchema = z.object({
       motion_intensity: z.enum(MOTION_INTENSITIES).optional(),
     })
     .optional(),
+  /**
+   * @deprecated The per-shot caption style is kept for back-compat with older
+   * payloads and tests; new flows read `Script.caption_style` (one global
+   * choice for the whole video). When building the composition we prefer the
+   * script-level value and only fall back to this per-shot value.
+   */
   caption_style: z.enum(CAPTION_STYLE_IDS).default(DEFAULT_CAPTION_STYLE),
 });
 export type Shot = z.infer<typeof ShotSchema>;
@@ -108,6 +114,13 @@ export const ScriptSchema = z.object({
   duration_target: z.number(),
   language: z.string().default('es-AR'),
   shots: z.array(ShotSchema),
+  /**
+   * Global caption style for the whole video. Replaces the per-shot
+   * `caption_style` going forward — the user picks ONE style in the wizard
+   * and it applies to every word span. Per-shot caption_style is still
+   * accepted on input but ignored when this is set.
+   */
+  caption_style: z.enum(CAPTION_STYLE_IDS).optional(),
   // Optional per-video voice override. Set by the planner when the chosen
   // avatar has a `default_voice_id` and the user picked the native voice mode.
   // Falls back to ELEVENLABS_VOICE_ID at render time when absent.

@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { ShotPlan, PlannedShot } from '@/lib/planner/types';
+import type { CaptionStyleId } from '@/lib/composition/caption-styles';
+import { CAPTION_STYLES } from '@/lib/composition/caption-styles';
 import type { WritePayload } from './WriteStep';
 import { ShotPlanCard } from './ShotPlanCard';
+import CaptionStylePicker from '@/components/wizard/CaptionStylePicker';
 
 export interface PlanStepProps {
   writePayload: WritePayload;
@@ -171,6 +174,31 @@ export function PlanStep({ writePayload, onConfirm, onBack }: PlanStepProps) {
           />
         ))}
       </div>
+
+      <section
+        className="card !p-4 space-y-3"
+        data-testid="caption-style-section"
+        aria-labelledby="caption-style-heading"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <h3 id="caption-style-heading" className="text-sm font-semibold">
+            Subtítulos
+          </h3>
+          <span className="text-xs text-ink-500">
+            {CAPTION_STYLES.find((s) => s.id === (editablePlan.caption_style ?? 'pill-karaoke'))?.label ?? '—'}
+          </span>
+        </div>
+        <p className="text-xs text-ink-500">
+          Elegí UN estilo para todo el video. Se aplica a cada palabra del audio.
+        </p>
+        <CaptionStylePicker
+          value={(editablePlan.caption_style ?? 'pill-karaoke') as CaptionStyleId}
+          onChange={(id) =>
+            setEditablePlan((cur) => (cur ? { ...cur, caption_style: id } : cur))
+          }
+          previewWord="EJEMPLO"
+        />
+      </section>
 
       <div className="flex justify-between items-center pt-4 sticky bottom-4">
         <span className="text-xs text-ink-500">

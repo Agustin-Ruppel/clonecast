@@ -41,6 +41,19 @@ export interface ComposeInput {
   captions: WordTimestamp[][];
   outputDir?: string;
   brand?: BrandPack | null;
+  /**
+   * Avatar base track. When set, the composition uses ONE avatar video
+   * spanning the full timeline (zIndex 0) and treats `brollClips` as
+   * muted overlays on top of it. Set by the pipeline when it coalesces all
+   * avatar shots into a single HeyGen call. When undefined, falls back to
+   * the per-shot stitching path (legacy `videoPaths[i]` per scene).
+   */
+  avatarVideoUrl?: string;
+  /**
+   * Time-offset overlays placed on top of the avatar base track. Each clip
+   * is muted (the avatar's audio plays continuously underneath).
+   */
+  brollClips?: { url: string; startSec: number; durationSec: number }[];
 }
 
 export interface CompositionScene {
@@ -132,7 +145,7 @@ ${CAPTION_CSS}
  *   - Brand lower-third is rendered as a single text element on top of everything for the first 3s.
  */
 export function buildComposition(input: ComposeInput): Composition {
-  const { script, videoPaths, audioPaths, captions, brand } = input;
+  const { script, videoPaths, audioPaths, captions, brand, avatarVideoUrl, brollClips } = input;
 
   const resolution = formatToResolution(script.format);
   const dims = CANVAS_DIMENSIONS[resolution];
@@ -148,13 +161,22 @@ export function buildComposition(input: ComposeInput): Composition {
   let elementCounter = 0;
   const nextId = (prefix: string) => `${prefix}-${elementCounter++}`;
 
+  // Global caption style: prefer Script-level (the wizard sets ONE for the
+  // whole video). Per-shot caption_style is back-compat only.
+  const globalCaptionStyle: CaptionStyleId =
+    (script.caption_style as CaptionStyleId | undefined) ?? DEFAULT_CAPTION_STYLE;
+  const useAvatarBase = !!avatarVideoUrl;
+
   for (let i = 0; i < script.shots.length; i++) {
     const shot = script.shots[i]!;
     const duration = shot.broll?.duration ?? 4;
     const videoSrc = videoPaths[i] ?? '';
     const audioSrc = audioPaths[i];
     const shotCaptions = captions[i] ?? [];
-    const captionStyle: CaptionStyleId = (shot.caption_style as CaptionStyleId) || DEFAULT_CAPTION_STYLE;
+    // Script-level wins; fall back to per-shot for legacy callers/tests.
+    const captionStyle: CaptionStyleId = script.caption_style
+      ? globalCaptionStyle
+      : ((shot.caption_style as CaptionStyleId) || DEFAULT_CAPTION_STYLE);
 
     const video: TimelineMediaElement = {
       id: nextId('video'),
@@ -171,7 +193,11 @@ export function buildComposition(input: ComposeInput): Composition {
       hasAudio: false,
       volume: 0,
     };
-    elements.push(video);
+    // When the avatar base track owns the visuals, individual per-shot
+    // videos are not added to the timeline (brolls come in as overlays
+    // below). The scene metadata still references the would-be video for
+    // inspection / tests.
+    if (!useAvatarBase) elements.push(video);
 
     let audio: TimelineMediaElement | undefined;
     if (audioSrc) {
@@ -186,7 +212,9 @@ export function buildComposition(input: ComposeInput): Composition {
         volume: 1,
         hasAudio: true,
       };
-      elements.push(audio);
+      // The avatar base video already carries the voiceover, so don't
+      // double up audio when we're in avatar-base mode.
+      if (!useAvatarBase) elements.push(audio);
     }
 
     const captionEls: TimelineTextElement[] = [];
@@ -230,6 +258,44 @@ export function buildComposition(input: ComposeInput): Composition {
 
     scenes.push({ index: i, shot, startTime: elapsed, duration, video, captions: captionEls, audio });
     elapsed += duration;
+  }
+
+  // Avatar base track + B-roll overlays (coalesced HeyGen mode).
+  if (useAvatarBase) {
+    const avatarBase: TimelineMediaElement = {
+      id: nextId('video'),
+      type: 'video',
+      name: 'avatar-base',
+      startTime: 0,
+      duration: elapsed,
+      zIndex: 0,
+      x: 0,
+      y: 0,
+      scale: 1,
+      opacity: 1,
+      src: avatarVideoUrl!,
+      hasAudio: true,
+      volume: 1,
+    };
+    elements.push(avatarBase);
+    for (const clip of brollClips ?? []) {
+      const overlay: TimelineMediaElement = {
+        id: nextId('video'),
+        type: 'video',
+        name: 'broll-overlay',
+        startTime: clip.startSec,
+        duration: clip.durationSec,
+        zIndex: 5,
+        x: 0,
+        y: 0,
+        scale: 1,
+        opacity: 1,
+        src: clip.url,
+        hasAudio: false,
+        volume: 0,
+      };
+      elements.push(overlay);
+    }
   }
 
   // Brand lower-third (first 3 seconds, top of stack).

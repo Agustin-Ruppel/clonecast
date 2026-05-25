@@ -75,32 +75,74 @@ export async function runPipeline(opts: {
     }
     job.steps.audio = { status: 'done', files: audioPaths };
 
-    opts.onProgress('video', 0, opts.mode === 'reel-broll' ? 'Generating B-rolls (Higgsfield)...' : 'Generating avatar + B-rolls...');
+    // Decide pipeline mode:
+    //   - "reel-broll" (or any script where NO shot has avatar text): each
+    //     shot gets its own B-roll, no HeyGen call. Original per-shot path.
+    //   - otherwise: ONE HeyGen call with the FULL concatenated script
+    //     ("avatar base track"). B-rolls only for shots flagged with a
+    //     broll prompt and overlay on top at time offsets.
+    const aspect = script.format;
+    const dims = aspect === '9:16' ? { width: 1080, height: 1920 } : { width: 1920, height: 1080 };
+    const hasAvatar = opts.mode !== 'reel-broll' && script.shots.some((s) => !!s.text);
+    const videoPaths: string[] = new Array(script.shots.length).fill('');
+    let avatarVideoUrl: string | undefined;
+    const brollClips: { url: string; startSec: number; durationSec: number }[] = [];
+
     job.steps.video.status = 'running';
     await saveJobState(job);
-    const videoPaths: string[] = [];
-    for (let i = 0; i < script.shots.length; i++) {
-      const shot = script.shots[i]!;
-      const aspect = script.format;
-      if (opts.mode === 'reel-broll' || !shot.text) {
-        const job = await generateBroll({ prompt: shot.broll?.prompt || 'cinematic scene', durationSec: shot.broll?.duration ?? 4, aspectRatio: aspect });
-        const polled = await pollUntilDone(() => pollBroll(job.job_id));
-        videoPaths.push(polled.video_url || '');
-      } else {
-        const dims = aspect === '9:16' ? { width: 1080, height: 1920 } : { width: 1920, height: 1080 };
-        const publicUrl = process.env.CLONECAST_PUBLIC_URL;
-        const callbackUrl = publicUrl ? `${publicUrl.replace(/\/$/, '')}/api/heygen/webhook` : undefined;
-        const job = await createAvatarVideo({
-          avatarId: process.env.HEYGEN_AVATAR_ID || 'mock',
-          voiceId,
-          text: shot.text!,
-          dimensions: dims,
-          callbackUrl,
-        });
-        const polled = await pollUntilDone(() => pollAvatarVideo(job.video_id));
-        videoPaths.push(polled.video_url || '');
+
+    if (hasAvatar) {
+      opts.onProgress('video', 0, 'Generando avatar (1 call con todo el script)...');
+      const scenes = script.shots
+        .filter((s) => !!s.text)
+        .map((s) => ({ text: s.text! }));
+      const publicUrl = process.env.CLONECAST_PUBLIC_URL;
+      const callbackUrl = publicUrl ? `${publicUrl.replace(/\/$/, '')}/api/heygen/webhook` : undefined;
+      const heyJob = await createAvatarVideo({
+        avatarId: process.env.HEYGEN_AVATAR_ID || 'mock',
+        voiceId,
+        scenes,
+        dimensions: dims,
+        callbackUrl,
+      });
+      const polled = await pollUntilDone(() => pollAvatarVideo(heyJob.video_id));
+      avatarVideoUrl = polled.video_url || '';
+      opts.onProgress('video', 50, 'Avatar listo, generando B-rolls de overlay...');
+
+      // Generate B-rolls only for shots that explicitly want one. Compute
+      // each broll's time offset = sum of previous shot durations.
+      let elapsed = 0;
+      for (let i = 0; i < script.shots.length; i++) {
+        const shot = script.shots[i]!;
+        const dur = shot.broll?.duration ?? 4;
+        const wantsBroll = shot.type === 'broll_only' || (shot.type === 'speak' && !!shot.broll);
+        if (wantsBroll) {
+          const bjob = await generateBroll({
+            prompt: shot.broll?.prompt || 'cinematic scene',
+            durationSec: dur,
+            aspectRatio: aspect,
+          });
+          const polledBroll = await pollUntilDone(() => pollBroll(bjob.job_id));
+          const url = polledBroll.video_url || '';
+          videoPaths[i] = url;
+          brollClips.push({ url, startSec: elapsed, durationSec: dur });
+        }
+        elapsed += dur;
+        opts.onProgress('video', 50 + ((i + 1) / script.shots.length) * 50);
       }
-      opts.onProgress('video', ((i + 1) / script.shots.length) * 100);
+    } else {
+      opts.onProgress('video', 0, 'Generating B-rolls (Higgsfield)...');
+      for (let i = 0; i < script.shots.length; i++) {
+        const shot = script.shots[i]!;
+        const bjob = await generateBroll({
+          prompt: shot.broll?.prompt || 'cinematic scene',
+          durationSec: shot.broll?.duration ?? 4,
+          aspectRatio: aspect,
+        });
+        const polled = await pollUntilDone(() => pollBroll(bjob.job_id));
+        videoPaths[i] = polled.video_url || '';
+        opts.onProgress('video', ((i + 1) / script.shots.length) * 100);
+      }
     }
     job.steps.video = { status: 'done', files: videoPaths };
 
@@ -139,7 +181,16 @@ export async function runPipeline(opts: {
     const brandPath = path.join(process.cwd(), 'assets', 'brand', 'brand.json');
     const diskBrand = (await fs.pathExists(brandPath)) ? ((await fs.readJson(brandPath)) as BrandPack) : null;
     const finalBrand = mergeBrand(diskBrand, opts.brandOverride ?? null);
-    const htmlPath = await composeHTML({ script, audioPaths, videoPaths, captions, outputDir: tmpDir, brand: finalBrand });
+    const htmlPath = await composeHTML({
+      script,
+      audioPaths,
+      videoPaths,
+      captions,
+      outputDir: tmpDir,
+      brand: finalBrand,
+      avatarVideoUrl,
+      brollClips,
+    });
     job.steps.compose = { status: 'done' };
     opts.onProgress('compose', 100);
 

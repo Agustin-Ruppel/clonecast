@@ -4,17 +4,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Disclosure } from '@/components/ui/Disclosure';
 import { AvatarPicker } from '@/components/AvatarPicker';
-import { VoicePicker, type VoiceMode } from '@/components/VoicePicker';
-import type { CachedAvatar } from '@/lib/db/repos/avatars-cache';
 
 const STEPS = [
   { key: 'welcome', title: 'Bienvenida', desc: 'Te explico cómo va el setup' },
-  { key: 'profile', title: 'Identidad', desc: 'Tu nombre, idioma, plataformas' },
-  { key: 'keys', title: 'API Keys', desc: 'Conectá los servicios' },
-  { key: 'voice', title: 'Voz clonada', desc: 'ElevenLabs voice ID' },
-  { key: 'avatar', title: 'Avatar (opcional)', desc: 'HeyGen avatar ID' },
-  { key: 'character', title: 'Character Pack', desc: 'Fotos tuyas para B-rolls' },
-  { key: 'brand', title: 'Brand Pack', desc: 'Logo, colores, fuente' },
+  { key: 'keys', title: 'Tus API keys', desc: 'Conectá los servicios que vayas a usar' },
+  { key: 'identity', title: 'Tu voz y tu cara', desc: 'Avatar HeyGen y voz ElevenLabs (al menos una)' },
+  { key: 'brand', title: 'Tu marca', desc: 'Nombre, colores, fuente' },
   { key: 'review', title: 'Listo', desc: 'Revisá y empezá a crear' },
 ];
 
@@ -30,7 +25,7 @@ export default function SetupPage() {
 
   useEffect(() => {
     fetch('/api/character').then((r) => r.json()).then((d) => setCharacterCount(d.photo_count || 0));
-  }, [step]);
+  }, []);
 
   const current = STEPS[step]!;
   const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
@@ -67,14 +62,28 @@ export default function SetupPage() {
         </div>
 
         <div className="card min-h-[400px]">
-          {step === 0 && <WelcomeStep onNext={next} />}
-          {step === 1 && <ProfileStep value={profile} onChange={setProfile} onNext={next} />}
-          {step === 2 && <KeysStep keys={keys} setKeys={setKeys} onNext={next} />}
-          {step === 3 && <VoiceStep voiceId={voiceId} setVoiceId={setVoiceId} avatarId={avatarId} onNext={next} />}
-          {step === 4 && <AvatarStep avatarId={avatarId} setAvatarId={setAvatarId} onNext={next} />}
-          {step === 5 && <CharacterStep count={characterCount} onChange={setCharacterCount} onNext={next} />}
-          {step === 6 && <BrandStep brand={brand} setBrand={setBrand} onNext={next} />}
-          {step === 7 && <ReviewStep profile={profile} keysCount={Object.values(keys).filter((k) => k.status === 'ok').length} characterCount={characterCount} onDone={() => router.push('/generate')} />}
+          {step === 0 && (
+            <WelcomeStep profile={profile} onChange={setProfile} onNext={next} />
+          )}
+          {step === 1 && <KeysStep keys={keys} setKeys={setKeys} onNext={next} />}
+          {step === 2 && (
+            <IdentityStep
+              avatarId={avatarId}
+              setAvatarId={setAvatarId}
+              voiceId={voiceId}
+              setVoiceId={setVoiceId}
+              onNext={next}
+            />
+          )}
+          {step === 3 && <BrandStep brand={brand} setBrand={setBrand} onNext={next} />}
+          {step === 4 && (
+            <ReviewStep
+              profile={profile}
+              keysCount={Object.values(keys).filter((k) => k.status === 'ok').length}
+              characterCount={characterCount}
+              onDone={() => router.push('/generate')}
+            />
+          )}
         </div>
 
         <div className="flex justify-between">
@@ -88,71 +97,95 @@ export default function SetupPage() {
   );
 }
 
-function WelcomeStep({ onNext }: { onNext: () => void }) {
-  return (
-    <div className="space-y-4">
-      <p>Te voy a hacer pasar por 7 pasos. Tardás unos 15 minutos en total.</p>
-      <p className="text-ink-500 text-sm">Podés pausar en cualquier momento — el progreso se guarda solo. Las API keys se guardan encriptadas en tu workspace local.</p>
-      <div className="card bg-accent-500/5 border-accent-500/20">
-        <p className="text-sm"><strong className="text-accent-400">Vas a necesitar tus propias API keys.</strong> Sin keys reales no se genera nada — el wizard te guía paso a paso para conseguir y pegar cada una.</p>
-      </div>
-      <button onClick={onNext} className="btn-primary">Empezar</button>
-    </div>
-  );
+interface ProfileShape {
+  name: string;
+  language: string;
+  type: string;
+  platforms: string[];
 }
 
-function ProfileStep({ value, onChange, onNext }: any) {
+function WelcomeStep({
+  profile,
+  onChange,
+  onNext,
+}: {
+  profile: ProfileShape;
+  onChange: (p: ProfileShape) => void;
+  onNext: () => void;
+}) {
   const save = async () => {
-    const res = await fetch('/api/profile', { method: 'POST', body: JSON.stringify(value), headers: { 'Content-Type': 'application/json' } });
+    const res = await fetch('/api/profile', {
+      method: 'POST',
+      body: JSON.stringify(profile),
+      headers: { 'Content-Type': 'application/json' },
+    });
     if (res.ok) onNext();
   };
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div>
-        <label className="label">Nombre / marca</label>
-        <input className="input" value={value.name} onChange={(e) => onChange({ ...value, name: e.target.value })} placeholder="Tu nombre o brand" />
+        <p>Te voy a llevar por 5 pasos. Tardás unos 10 minutos en total.</p>
+        <p className="text-ink-500 text-sm mt-1">
+          Podés pausar — el progreso se guarda solo. Las API keys se guardan encriptadas en tu workspace local.
+        </p>
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="label">Idioma</label>
-          <select className="input" value={value.language} onChange={(e) => onChange({ ...value, language: e.target.value })}>
-            <option value="es-AR">Español (Argentina)</option>
-            <option value="es-MX">Español (México)</option>
-            <option value="es-ES">Español (España)</option>
-            <option value="en-US">English (US)</option>
-            <option value="pt-BR">Português (Brasil)</option>
-          </select>
-        </div>
-        <div>
-          <label className="label">Tipo</label>
-          <select className="input" value={value.type} onChange={(e) => onChange({ ...value, type: e.target.value })}>
-            <option value="educator">Educator (cursos)</option>
-            <option value="founder">Founder (marca personal)</option>
-            <option value="entertainer">Entertainer (lifestyle)</option>
-            <option value="ecommerce">Ecommerce (producto)</option>
-          </select>
-        </div>
+
+      <div className="card bg-accent-500/5 border-accent-500/20">
+        <p className="text-sm">
+          <strong className="text-accent-400">Vas a necesitar tus propias API keys.</strong>{' '}
+          Sin keys reales no se genera nada — el wizard te guía paso a paso.
+        </p>
       </div>
+
+      <div className="h-px bg-ink-800" />
+
       <div>
-        <label className="label">Plataformas (toggle)</label>
-        <div className="flex flex-wrap gap-2">
-          {['instagram', 'tiktok', 'youtube', 'linkedin'].map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => {
-                const set = new Set(value.platforms);
-                set.has(p) ? set.delete(p) : set.add(p);
-                onChange({ ...value, platforms: Array.from(set) });
-              }}
-              className={`pill ${value.platforms.includes(p) ? '!bg-accent-500/10 !text-accent-400 !border-accent-500/30' : ''}`}
-            >
-              {p}
-            </button>
-          ))}
+        <h2 className="text-sm font-medium text-ink-300 mb-3">Contanos quién sos</h2>
+        <div className="space-y-4">
+          <div>
+            <label className="label">Nombre / marca</label>
+            <input
+              className="input"
+              value={profile.name}
+              onChange={(e) => onChange({ ...profile, name: e.target.value })}
+              placeholder="Tu nombre o brand"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Idioma</label>
+              <select
+                className="input"
+                value={profile.language}
+                onChange={(e) => onChange({ ...profile, language: e.target.value })}
+              >
+                <option value="es-AR">Español (Argentina)</option>
+                <option value="es-MX">Español (México)</option>
+                <option value="es-ES">Español (España)</option>
+                <option value="en-US">English (US)</option>
+                <option value="pt-BR">Português (Brasil)</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Tipo de creador</label>
+              <select
+                className="input"
+                value={profile.type}
+                onChange={(e) => onChange({ ...profile, type: e.target.value })}
+              >
+                <option value="educator">Educator (cursos)</option>
+                <option value="founder">Founder (marca personal)</option>
+                <option value="entertainer">Entertainer (lifestyle)</option>
+                <option value="ecommerce">Ecommerce (producto)</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
-      <button onClick={save} disabled={!value.name} className="btn-primary">Guardar y seguir</button>
+
+      <button onClick={save} disabled={!profile.name} className="btn-primary">
+        Empezar
+      </button>
     </div>
   );
 }
@@ -320,114 +353,20 @@ function KeyRow({
   );
 }
 
-function VoiceStep({
+function IdentityStep({
+  avatarId,
+  setAvatarId,
   voiceId,
   setVoiceId,
-  avatarId,
   onNext,
 }: {
+  avatarId: string;
+  setAvatarId: (id: string) => void;
   voiceId: string;
   setVoiceId: (v: string) => void;
-  avatarId: string;
   onNext: () => void;
 }) {
-  const [avatars, setAvatars] = useState<CachedAvatar[]>([]);
-  const [voiceMode, setVoiceMode] = useState<VoiceMode>('native');
-
-  useEffect(() => {
-    void fetch('/api/heygen/avatars')
-      .then((r) => r.json() as Promise<{ avatars?: CachedAvatar[] }>)
-      .then((d) => setAvatars(Array.isArray(d.avatars) ? d.avatars : []))
-      .catch(() => setAvatars([]));
-    void fetch('/api/settings')
-      .then((r) => r.json() as Promise<{ voice_mode?: VoiceMode }>)
-      .then((s) => {
-        if (s.voice_mode === 'native' || s.voice_mode === 'custom') setVoiceMode(s.voice_mode);
-      })
-      .catch(() => {});
-  }, []);
-
-  const selectedAvatar = avatars.find((a) => a.id === avatarId) ?? null;
-
-  // Smart default: native if avatar has voice, else custom.
-  useEffect(() => {
-    if (selectedAvatar?.default_voice_id) setVoiceMode((m) => m ?? 'native');
-    else setVoiceMode((m) => (m === 'native' && !selectedAvatar?.default_voice_id ? 'custom' : m));
-  }, [selectedAvatar]);
-
-  const handleModeChange = (mode: VoiceMode) => {
-    setVoiceMode(mode);
-    void fetch('/api/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ voice_mode: mode }),
-    });
-  };
-
-  const save = async () => {
-    if (voiceMode === 'custom' && voiceId) {
-      await fetch('/api/keys/validate', {
-        method: 'POST',
-        body: JSON.stringify({ key: 'ELEVENLABS_VOICE_ID', value: voiceId, persist: true }),
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-    await fetch('/api/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ voice_mode: voiceMode }),
-    });
-    onNext();
-  };
-
-  return (
-    <div className="space-y-5">
-      <p>Elegí qué voz usar para tus videos.</p>
-
-      <VoicePicker
-        selectedAvatar={selectedAvatar}
-        selectedVoiceMode={voiceMode}
-        customVoiceId={voiceId || null}
-        onChange={handleModeChange}
-      />
-
-      {voiceMode === 'custom' && (
-        <div className="space-y-2 pt-2">
-          <p className="text-sm">
-            Necesitamos el <code className="text-accent-400">voice_id</code> de tu voz clonada en ElevenLabs.
-          </p>
-          <ol className="text-sm text-ink-500 space-y-1 list-decimal list-inside">
-            <li>
-              Andá a{' '}
-              <a className="text-accent-400 underline" href="https://elevenlabs.io/app/voice-lab" target="_blank" rel="noreferrer">
-                Voice Lab
-              </a>
-            </li>
-            <li>Cloná tu voz con un sample de 1+ minuto</li>
-            <li>Copiá el Voice ID y pegalo abajo</li>
-          </ol>
-          <input
-            className="input"
-            placeholder="EXAVITQu4vr4xnSDxMaL"
-            value={voiceId}
-            onChange={(e) => setVoiceId(e.target.value)}
-          />
-        </div>
-      )}
-
-      <button
-        onClick={save}
-        disabled={voiceMode === 'custom' && !voiceId}
-        className="btn-primary"
-      >
-        Guardar
-      </button>
-    </div>
-  );
-}
-
-function AvatarStep({ avatarId, setAvatarId, onNext }: any) {
-  const persist = async (value: string) => {
+  const persistAvatar = async (value: string) => {
     if (!value) return;
     await fetch('/api/keys/validate', {
       method: 'POST',
@@ -436,51 +375,67 @@ function AvatarStep({ avatarId, setAvatarId, onNext }: any) {
     });
   };
 
-  const handlePick = (id: string) => {
+  const handleAvatarPick = (id: string) => {
     setAvatarId(id);
-    void persist(id);
+    void persistAvatar(id);
   };
 
   return (
-    <div className="space-y-4">
-      <p>
-        El avatar HeyGen es <strong>opcional</strong>. Si lo dejás vacío, vas a poder usar el modo{' '}
-        <code className="text-accent-400">reel-broll</code> (sin avatar) que es igual de potente.
+    <div className="space-y-6">
+      <p className="text-sm text-ink-500">
+        Configurá tu avatar HeyGen y/o tu voz ElevenLabs. <strong>Al menos una</strong>{' '}
+        es suficiente para empezar — podés agregar la otra después.
       </p>
-      <AvatarPicker selected={avatarId || null} onChange={handlePick} allowNone />
-      <button onClick={onNext} className="btn-primary">
-        {avatarId ? 'Continuar' : 'Saltar'}
-      </button>
-    </div>
-  );
-}
 
-function CharacterStep({ count, onChange, onNext }: any) {
-  const onUpload = async (files: FileList | null) => {
-    if (!files) return;
-    for (const file of Array.from(files)) {
-      const fd = new FormData();
-      fd.append('file', file);
-      await fetch('/api/character', { method: 'POST', body: fd });
-    }
-    const res = await fetch('/api/character').then((r) => r.json());
-    onChange(res.photo_count);
-  };
-  return (
-    <div className="space-y-4">
-      <p>Subí <strong>5–12 fotos tuyas</strong> con buena luz, cara visible, distintos ángulos. Estas alimentan a Higgsfield para generar B-rolls personalizados con tu cara.</p>
-      <div className="card bg-ink-800 border-dashed">
-        <label className="cursor-pointer text-center block">
-          <input type="file" multiple accept="image/*" className="hidden" onChange={(e) => onUpload(e.target.files)} />
-          <div className="text-ink-500 mb-2">Arrastrá fotos acá o</div>
-          <div className="btn-primary inline-block">Seleccionar archivos</div>
-        </label>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium text-ink-300">Tu cara — Avatar HeyGen</h3>
+          <p className="text-xs text-ink-500">
+            Opcional. Si lo dejás vacío, vas a poder generar reels sin cámara (voz + B-rolls).
+          </p>
+          <AvatarPicker selected={avatarId || null} onChange={handleAvatarPick} allowNone />
+        </div>
+
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium text-ink-300">Tu voz — ElevenLabs</h3>
+          <p className="text-xs text-ink-500">
+            Pegá el <code className="text-accent-400">voice_id</code> de tu voz clonada.
+          </p>
+          <ol className="text-xs text-ink-500 space-y-1 list-decimal list-inside">
+            <li>
+              Andá a{' '}
+              <a className="text-accent-400 underline" href="https://elevenlabs.io/app/voice-lab" target="_blank" rel="noreferrer">
+                Voice Lab
+              </a>
+            </li>
+            <li>Cloná tu voz con 1+ minuto de sample</li>
+            <li>Copiá el Voice ID</li>
+          </ol>
+          <input
+            className="input"
+            placeholder="EXAVITQu4vr4xnSDxMaL"
+            value={voiceId}
+            onChange={(e) => setVoiceId(e.target.value)}
+          />
+        </div>
       </div>
-      <div className="flex items-center gap-2 text-sm">
-        <div className="pill-success">{count} fotos cargadas</div>
-        {count < 5 && <span className="text-amber-400">Mínimo 5</span>}
-      </div>
-      <button onClick={onNext} disabled={count < 5} className="btn-primary">Continuar</button>
+
+      <button
+        onClick={async () => {
+          if (voiceId) {
+            await fetch('/api/keys/validate', {
+              method: 'POST',
+              body: JSON.stringify({ key: 'ELEVENLABS_VOICE_ID', value: voiceId, persist: true }),
+              headers: { 'Content-Type': 'application/json' },
+            });
+          }
+          onNext();
+        }}
+        disabled={!avatarId && !voiceId}
+        className="btn-primary"
+      >
+        Continuar
+      </button>
     </div>
   );
 }
@@ -528,17 +483,40 @@ function BrandStep({ brand, setBrand, onNext }: any) {
   );
 }
 
-function ReviewStep({ profile, keysCount, characterCount, onDone }: any) {
+function ReviewStep({
+  profile,
+  keysCount,
+  characterCount,
+  onDone,
+}: {
+  profile: ProfileShape;
+  keysCount: number;
+  characterCount: number;
+  onDone: () => void;
+}) {
+  const characterMissing = characterCount < 5;
   return (
     <div className="space-y-4">
       <p className="text-lg">Setup completo. ✓</p>
       <ul className="space-y-1.5 text-sm">
         <li>✓ Profile: <strong>{profile.name}</strong> ({profile.language}, {profile.type})</li>
         <li>✓ API keys validadas: <strong>{keysCount}</strong></li>
-        <li>✓ Character pack: <strong>{characterCount} fotos</strong></li>
         <li>✓ Brand pack listo</li>
       </ul>
-      <p className="text-ink-500 text-sm">Estás listo para generar tu primer video. Empezamos con Mock mode (sin gastar créditos) y cuando quieras lo apagás en <code>.env.local</code>.</p>
+
+      {characterMissing && (
+        <div className="card bg-amber-500/5 border-amber-500/30">
+          <p className="text-sm text-amber-200">
+            <strong>Tip:</strong> tu Character Pack todavía está vacío.{' '}
+            Completalo cuando quieras generar B-rolls con tu cara →{' '}
+            <a className="text-accent-400 underline" href="/setup/character">/setup/character</a>.
+          </p>
+        </div>
+      )}
+
+      <p className="text-ink-500 text-sm">
+        Estás listo para generar tu primer video. Empezamos con Mock mode (sin gastar créditos) y cuando quieras lo apagás en <code>.env.local</code>.
+      </p>
       <button onClick={onDone} className="btn-primary">Generar mi primer video →</button>
     </div>
   );

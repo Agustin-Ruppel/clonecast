@@ -3,8 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AvatarPicker } from '@/components/AvatarPicker';
 import { VoicePicker, type VoiceMode } from '@/components/VoicePicker';
+import { Surface } from '@/components/ui/Surface';
+import { Toolbar } from '@/components/ui/Toolbar';
 import type { CachedAvatar } from '@/lib/db/repos/avatars-cache';
 import type { Preset } from '@/lib/presets';
+import { ArrowRight, ChevronDown } from 'lucide-react';
 
 export type WriteFormat = '9:16' | '16:9' | '1:1';
 export type WriteMode = 'auto' | 'avatar' | 'broll-only' | 'mixed';
@@ -26,8 +29,6 @@ const PLACEHOLDERS = [
   'Ejemplo: Reel sobre cómo automatizo mi cobranza con n8n…',
   'Pegá tu guion completo o describí en una línea el video que querés…',
 ];
-
-const SECTION_LABEL = 'text-sm font-medium text-ink-300 mb-3';
 
 function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
@@ -82,7 +83,6 @@ export function WriteStep({ initialGuion = '', onSubmit }: WriteStepProps) {
       .finally(() => setPresetsLoading(false));
   }, [showTemplates, presets.length]);
 
-  // Close the presets dropdown on outside click.
   useEffect(() => {
     if (!showTemplates) return;
     const handler = (e: MouseEvent) => {
@@ -116,68 +116,67 @@ export function WriteStep({ initialGuion = '', onSubmit }: WriteStepProps) {
     });
   };
 
-  const togglePill = () => {
-    setForceMode(detected === 'brief' ? 'guion' : 'brief');
-  };
+  const wordCount = countWords(text);
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Nuevo video</h1>
+      <h1 className="text-hero">Crear reel con IA</h1>
 
-      <div className="card space-y-8">
-        {/* Section 1 — TEXT */}
+      <Surface className="space-y-6">
+        {/* Section 1 — GUION */}
         <section>
-          <label className={SECTION_LABEL} htmlFor="write-textarea">
-            Tu guion o brief
-          </label>
-          <div className="relative">
-            <textarea
-              id="write-textarea"
-              className="input min-h-[250px] resize-y"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder={PLACEHOLDERS[placeholderIdx]}
-              data-testid="write-textarea"
-            />
-            {text.trim().length > 0 && (
+          <h2 className="text-title mb-3">Tu guion</h2>
+          <textarea
+            id="write-textarea"
+            className="input min-h-[200px] resize-y"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={PLACEHOLDERS[placeholderIdx]}
+            data-testid="write-textarea"
+          />
+          {text.trim().length > 0 ? (
+            <div className="mt-2 text-meta">
               <button
                 type="button"
-                onClick={togglePill}
-                className={`absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full border ${
-                  detected === 'guion'
-                    ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
-                    : 'bg-amber-500/10 text-amber-300 border-amber-500/30'
-                }`}
-                title="Click para forzar el otro modo"
+                onClick={() =>
+                  setForceMode(detected === 'brief' ? 'guion' : 'brief')
+                }
+                className="text-text-secondary hover:text-text-primary"
                 data-testid="detect-pill"
               >
-                {detected === 'guion' ? 'Guion' : 'Brief'}
+                auto-detect: <span className="text-text-primary">{detected === 'guion' ? 'Guion' : 'Brief'}</span>
+                <span className="num"> ({wordCount} palabras)</span>
               </button>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="mt-2 text-meta">Pegá un guion completo o un brief corto.</div>
+          )}
         </section>
 
+        <div className="border-t border-border-subtle" />
+
         {/* Section 2 — AVATAR */}
-        <section className="border-t border-ink-800 pt-6">
-          <label className={SECTION_LABEL}>Elegí tu avatar</label>
+        <section>
+          <h2 className="text-title mb-3">Tu avatar</h2>
           <AvatarPicker selected={avatarId} onChange={(id) => setAvatarId(id)} allowNone />
 
           {selectedAvatar && (
-            <div className="mt-3 flex items-center gap-2 text-xs text-ink-400">
+            <div className="mt-3 text-meta flex items-center gap-2 flex-wrap">
+              <span className="text-[var(--intent-success)]">✓</span>
               <span>
                 Voz:{' '}
-                <span className="text-white">
+                <span className="text-text-primary">
                   {voiceMode === 'native' && selectedAvatar.default_voice_id
-                    ? `nativa del avatar (${selectedAvatar.default_voice_name ?? 'sin nombre'})`
+                    ? `nativa (${selectedAvatar.default_voice_name ?? 'sin nombre'})`
                     : 'clonada (ElevenLabs)'}
                 </span>
               </span>
               <button
                 type="button"
-                className="text-accent-400 hover:underline"
+                className="text-[var(--accent)] hover:underline"
                 onClick={() => setShowVoicePicker((v) => !v)}
               >
-                {showVoicePicker ? 'ocultar' : 'editar'}
+                {showVoicePicker ? 'ocultar' : 'Cambiar voz'}
               </button>
             </div>
           )}
@@ -201,72 +200,88 @@ export function WriteStep({ initialGuion = '', onSubmit }: WriteStepProps) {
           )}
         </section>
 
-        {/* Section 3 — TOOLBAR (format + plantillas) */}
-        <section className="border-t border-ink-800 pt-6 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-ink-500 mr-1">Formato</span>
-            {(['9:16', '16:9', '1:1'] as WriteFormat[]).map((f) => (
+        <div className="border-t border-border-subtle" />
+
+        {/* Section 3 — FORMATO */}
+        <section>
+          <h2 className="text-title mb-3">Formato</h2>
+          <Toolbar>
+            <div className="flex items-center gap-1.5">
+              {(['9:16', '16:9', '1:1'] as WriteFormat[]).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setFormat(f)}
+                  className={
+                    format === f
+                      ? 'inline-flex items-center rounded-md px-2.5 py-1 text-meta bg-[var(--accent)] text-[var(--accent-fg)] num'
+                      : 'inline-flex items-center rounded-md px-2.5 py-1 text-meta bg-surface-2 text-text-secondary hover:text-text-primary num'
+                  }
+                  data-testid={`format-${f}`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+
+            <span className="text-text-muted">·</span>
+
+            <span className="text-text-secondary">
+              Idioma: <span className="text-text-primary">es-AR</span>
+            </span>
+
+            <span className="text-text-muted">·</span>
+
+            <div className="relative" ref={templatesRef}>
               <button
-                key={f}
                 type="button"
-                onClick={() => setFormat(f)}
-                className={`pill ${format === f ? '!bg-accent-500 !text-white !border-accent-500' : ''}`}
-                data-testid={`format-${f}`}
+                className="text-text-secondary hover:text-text-primary inline-flex items-center gap-1"
+                onClick={() => setShowTemplates((v) => !v)}
               >
-                {f}
+                Plantillas <ChevronDown className="size-3.5" />
               </button>
-            ))}
-          </div>
-
-          <div className="relative" ref={templatesRef}>
-            <button
-              type="button"
-              className="text-xs text-ink-500 hover:text-white"
-              onClick={() => setShowTemplates((v) => !v)}
-            >
-              {showTemplates ? '▾' : '‹'} Plantillas
-            </button>
-            {showTemplates && (
-              <div className="absolute right-0 mt-2 w-72 p-3 rounded-lg bg-ink-950 border border-ink-800 z-20 shadow-xl">
-                {presetsLoading && <p className="text-xs text-ink-500">Cargando plantillas…</p>}
-                {!presetsLoading && presets.length === 0 && (
-                  <p className="text-xs text-ink-500">No hay plantillas disponibles.</p>
-                )}
-                {!presetsLoading && presets.length > 0 && (
-                  <ul className="space-y-1 max-h-72 overflow-y-auto">
-                    {presets.map((p) => (
-                      <li key={p.id}>
-                        <button
-                          type="button"
-                          onClick={() => applyPreset(p)}
-                          className="w-full text-left px-2 py-1.5 rounded hover:bg-ink-800 text-xs"
-                          data-testid={`preset-${p.id}`}
-                        >
-                          <div className="font-medium text-white">{p.label}</div>
-                          {p.description && (
-                            <div className="text-ink-500 mt-0.5">{p.description}</div>
-                          )}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          </div>
+              {showTemplates && (
+                <div className="absolute right-0 mt-2 w-72 p-3 rounded-lg bg-surface border border-border-default z-20 shadow-md">
+                  {presetsLoading && <p className="text-meta">Cargando plantillas…</p>}
+                  {!presetsLoading && presets.length === 0 && (
+                    <p className="text-meta">No hay plantillas disponibles.</p>
+                  )}
+                  {!presetsLoading && presets.length > 0 && (
+                    <ul className="space-y-1 max-h-72 overflow-y-auto">
+                      {presets.map((p) => (
+                        <li key={p.id}>
+                          <button
+                            type="button"
+                            onClick={() => applyPreset(p)}
+                            className="w-full text-left px-2 py-1.5 rounded hover:bg-surface-2 text-meta"
+                            data-testid={`preset-${p.id}`}
+                          >
+                            <div className="font-medium text-text-primary">{p.label}</div>
+                            {p.description && (
+                              <div className="text-text-secondary mt-0.5">{p.description}</div>
+                            )}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+          </Toolbar>
         </section>
-      </div>
+      </Surface>
 
-      {/* Section 4 — CTA */}
       <div className="flex justify-end">
         <button
           type="button"
           onClick={handleSubmit}
           disabled={!text.trim()}
-          className="btn-primary"
+          className="btn-primary inline-flex items-center gap-2"
+          style={{ height: 48, paddingLeft: 20, paddingRight: 20, fontSize: 'var(--text-title)' }}
           data-testid="planear-video"
         >
-          Planear video →
+          Planear video <ArrowRight className="size-4" />
         </button>
       </div>
     </div>

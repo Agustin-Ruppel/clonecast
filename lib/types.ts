@@ -178,7 +178,10 @@ export type AvatarTrackShot = z.infer<typeof AvatarTrackShotSchema>;
 export const AvatarTrackRequestSchema = z.object({
   jobId: z.string().min(1),
   avatarId: z.string().min(1),
-  voiceId: z.string().min(1),
+  // Optional — when omitted, the server resolves a default HeyGen voice via
+  // /v2/voices. HeyGen's avatar list endpoint often returns null for
+  // default_voice_id so the client cannot reliably pre-populate this.
+  voiceId: z.string().min(1).optional(),
   format: z.enum(['9:16', '16:9', '1:1']),
   // Only the avatar-bearing shots. 1 HeyGen call coalesces them via scenes[].
   shots: z.array(AvatarTrackShotSchema).min(1),

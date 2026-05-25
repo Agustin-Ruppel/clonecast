@@ -37,23 +37,22 @@ export default function GenerateV2Page() {
       .filter(({ s }) => s.type !== 'broll-only' && s.text.trim().length > 0);
 
     if (avatarShots.length === 0 || !payload.avatarId) return;
+
+    // voice_id may be null when the chosen HeyGen avatar didn't ship with
+    // default_voice_id (common — HeyGen /v2/avatars often returns null).
+    // We still fire avatar-track; the server resolves a default voice via
+    // /v2/voices. Surfacing failures happens through the BrollPickerStep
+    // banner via the status endpoint.
     const voiceId = confirmedPlan.voice_id;
-    if (!voiceId) {
-      // Without a voice the avatar-track endpoint will 400. Surface it via
-      // the banner inside BrollPickerStep (status=error path).
-      // eslint-disable-next-line no-console
-      console.warn('[generate] no voice_id on plan — avatar-track skipped');
-      return;
-    }
 
     try {
-      await fetch('/api/generate/avatar-track', {
+      const res = await fetch('/api/generate/avatar-track', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           jobId: id,
           avatarId: payload.avatarId,
-          voiceId,
+          ...(voiceId ? { voiceId } : {}),
           format: payload.format,
           shots: avatarShots.map(({ s, i }) => ({
             text: s.text,
@@ -62,6 +61,11 @@ export default function GenerateV2Page() {
           })),
         }),
       });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        // eslint-disable-next-line no-console
+        console.error('[generate] avatar-track POST failed', res.status, body);
+      }
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('[generate] avatar-track kick-off failed', e);

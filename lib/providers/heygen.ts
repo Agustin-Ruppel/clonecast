@@ -28,6 +28,49 @@ export async function validateHeyGenKey(key: string): Promise<{ ok: boolean; err
   }
 }
 
+interface HeyGenVoice {
+  voice_id: string;
+  language?: string;
+  name?: string;
+  gender?: string;
+}
+
+let cachedDefaultVoiceId: string | null = null;
+
+/**
+ * Resolve a usable HeyGen voice_id when the chosen avatar didn't ship with a
+ * `default_voice_id` (HeyGen's `/v2/avatars` list endpoint frequently returns
+ * null for this field). Strategy:
+ *   1. env HEYGEN_DEFAULT_VOICE_ID wins (lets advanced users pin a voice).
+ *   2. Otherwise fetch `/v2/voices` and pick the first matching `langPrefix`
+ *      (default Spanish), falling back to the very first voice listed.
+ * Result is cached in memory for the process lifetime.
+ */
+export async function getDefaultVoiceId(langPrefix = 'es'): Promise<string> {
+  if (isTestFixtureMode()) return 'fixture-voice-1';
+  const envOverride = process.env.HEYGEN_DEFAULT_VOICE_ID;
+  if (envOverride) return envOverride;
+  if (cachedDefaultVoiceId) return cachedDefaultVoiceId;
+
+  const key = getSecret('HEYGEN_API_KEY');
+  if (!key) throw new Error('HeyGen: cannot resolve default voice — HEYGEN_API_KEY not configured');
+
+  const { statusCode, body } = await request(`${API_BASE}/v2/voices`, {
+    headers: { 'X-Api-Key': key },
+  });
+  const rawText = await body.text();
+  if (statusCode !== 200) {
+    throw new Error(`HeyGen /v2/voices failed: HTTP ${statusCode} — ${rawText.slice(0, 200)}`);
+  }
+  const data: any = JSON.parse(rawText);
+  const voices: HeyGenVoice[] = data?.data?.voices ?? data?.voices ?? [];
+  if (voices.length === 0) throw new Error('HeyGen /v2/voices returned empty list');
+
+  const match = voices.find((v) => (v.language ?? '').toLowerCase().startsWith(langPrefix.toLowerCase()));
+  cachedDefaultVoiceId = (match ?? voices[0]!).voice_id;
+  return cachedDefaultVoiceId;
+}
+
 export interface HeyGenJob {
   video_id: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';

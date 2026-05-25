@@ -3,7 +3,7 @@ import { activateRequestWorkspace } from '@/lib/core/active-workspace';
 import { preloadSecrets } from '@/lib/core/secrets';
 import { runMigrations } from '@/lib/db/migrations';
 import { getDb } from '@/lib/db/connection';
-import { createAvatarVideo, pollAvatarVideo } from '@/lib/providers/heygen';
+import { createAvatarVideo, pollAvatarVideo, getDefaultVoiceId } from '@/lib/providers/heygen';
 import { AvatarTrackRequestSchema } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -72,17 +72,23 @@ export async function POST(req: Request) {
 
   let heyJob;
   try {
+    // Resolve voice: client-provided value wins, otherwise fetch a sane default
+    // from HeyGen `/v2/voices` (Spanish-first). This unblocks the common case
+    // where the avatar's default_voice_id is null in the cache.
+    const resolvedVoiceId = voiceId && voiceId.length > 0 ? voiceId : await getDefaultVoiceId('es');
+
     const publicUrl = process.env.CLONECAST_PUBLIC_URL;
     const callbackUrl = publicUrl ? `${publicUrl.replace(/\/$/, '')}/api/heygen/webhook` : undefined;
     heyJob = await createAvatarVideo({
       avatarId,
-      voiceId,
+      voiceId: resolvedVoiceId,
       scenes,
       dimensions: dims,
       callbackUrl,
     });
   } catch (e: any) {
     const message = e?.message || String(e);
+    console.error('[avatar-track] HeyGen create failed:', message);
     await db
       .updateTable('jobs')
       .set({ status: 'error', error: message })

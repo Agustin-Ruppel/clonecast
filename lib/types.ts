@@ -159,6 +159,57 @@ export interface StepStatus {
   files?: string[];
 }
 
+// ─── B-roll picker phase schemas ─────────────────────────────────────────
+// Request/response shapes for the visual B-roll picker pipeline:
+//   POST /api/generate/avatar-track   → fire-and-forget HeyGen full-script call
+//   GET  /api/generate/avatar-track/[jobId]/status → polling
+//   POST /api/generate/broll-options  → 3 parallel Higgsfield gens per shot
+//   POST /api/generate/composite      → SSE compose using chosen brolls
+
+export const AvatarTrackShotSchema = z.object({
+  text: z.string().min(1),
+  // Index into the plan's shots[] — only avatar/avatar-with-broll shots are
+  // sent here; the picker on the client filters before posting.
+  shot_index: z.number().int().nonnegative(),
+  duration_sec: z.number().positive(),
+});
+export type AvatarTrackShot = z.infer<typeof AvatarTrackShotSchema>;
+
+export const AvatarTrackRequestSchema = z.object({
+  jobId: z.string().min(1),
+  avatarId: z.string().min(1),
+  voiceId: z.string().min(1),
+  format: z.enum(['9:16', '16:9', '1:1']),
+  // Only the avatar-bearing shots. 1 HeyGen call coalesces them via scenes[].
+  shots: z.array(AvatarTrackShotSchema).min(1),
+});
+export type AvatarTrackRequest = z.infer<typeof AvatarTrackRequestSchema>;
+
+export const BrollOptionsRequestSchema = z.object({
+  jobId: z.string().min(1),
+  shotIndex: z.number().int().nonnegative(),
+  styleId: z.enum(HIGGSFIELD_MODES),
+  prompt: z.string().min(1),
+  durationSec: z.number().positive().max(15).default(4),
+  format: z.enum(['9:16', '16:9', '1:1']).default('9:16'),
+});
+export type BrollOptionsRequest = z.infer<typeof BrollOptionsRequestSchema>;
+
+export const CompositeRequestSchema = z.object({
+  jobId: z.string().min(1),
+  // Map from shot_index → chosen broll_options row id, or 'avatar-only' to
+  // skip broll overlay for that shot, or null for shots that aren't broll
+  // shots (the avatar plays through naturally).
+  chosenBrollIds: z.record(z.string(), z.union([z.string(), z.literal('avatar-only')])),
+  captionStyle: z.enum(CAPTION_STYLE_IDS).optional(),
+  // The full script context (needed to compose final video — text per shot,
+  // duration, format). Mirrors what the legacy /api/generate accepts.
+  script: ScriptSchema.partial({ video_id: true }).extend({
+    video_id: z.string().optional(),
+  }),
+});
+export type CompositeRequest = z.infer<typeof CompositeRequestSchema>;
+
 export const ProviderKeys = [
   'ANTHROPIC_API_KEY',
   'OPENAI_API_KEY',

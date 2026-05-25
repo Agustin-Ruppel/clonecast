@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import {
+  HIGGSFIELD_MODES,
   HIGGSFIELD_PRESET_IDS,
   MOTION_INTENSITIES,
+  type HiggsfieldMode,
   type HiggsfieldPresetId,
   type MotionIntensity,
 } from '@/lib/types';
@@ -19,6 +21,15 @@ type Settings = {
   storage_backend: StorageBackend;
   higgsfield_preset_default?: HiggsfieldPresetId;
   motion_intensity_default?: MotionIntensity;
+  higgsfield_mode_default: HiggsfieldMode;
+};
+
+const HIGGSFIELD_MODE_LABEL: Record<HiggsfieldMode, { label: string; desc: string }> = {
+  photodump: { label: 'Photodump', desc: 'Foto-realista, preset-driven. Default seguro.' },
+  'soul-cinema-studio': { label: 'Soul Cinema Studio', desc: 'Cinematográfico con feel "Soul".' },
+  'cinema-studio': { label: 'Cinema Studio', desc: 'Cine pro 3.5 — máxima calidad.' },
+  'soul-cast': { label: 'Soul Cast', desc: 'Multi-personaje con consistencia de cara.' },
+  'image-to-video': { label: 'Image to Video', desc: 'Animá una imagen estática.' },
 };
 
 const VOICE_OPTIONS: { value: VoiceProvider; label: string; desc: string }[] = [
@@ -185,6 +196,38 @@ export default function SettingsPage() {
           </div>
         </section>
       )}
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold">Higgsfield default mode</h2>
+        <p className="text-sm text-ink-500">
+          Modo Higgsfield por defecto para todos los shots. Podés overridearlo por shot
+          en el plan, pero el 90% del tiempo este default es suficiente.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {HIGGSFIELD_MODES.map((mode) => {
+            const selected = settings.higgsfield_mode_default === mode;
+            const meta = HIGGSFIELD_MODE_LABEL[mode];
+            return (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => update({ higgsfield_mode_default: mode })}
+                className={`card text-left transition-colors ${
+                  selected
+                    ? 'border-accent-500 bg-accent-500/5'
+                    : 'hover:border-ink-700 hover:bg-ink-900/70'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-semibold text-sm">{meta.label}</span>
+                  {selected && <span className="pill-success">activo</span>}
+                </div>
+                <p className="text-xs text-ink-500">{meta.desc}</p>
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Storage</h2>

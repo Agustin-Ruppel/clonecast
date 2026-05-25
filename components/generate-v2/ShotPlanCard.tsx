@@ -24,15 +24,23 @@ export interface ShotPlanCardProps {
   index: number;
   onChange: (next: PlannedShot) => void;
   avatarPreviewUrl?: string;
+  higgsfieldDefaultMode?: HiggsfieldMode;
 }
 
-export function ShotPlanCard({ shot, index, onChange, avatarPreviewUrl }: ShotPlanCardProps) {
+export function ShotPlanCard({
+  shot,
+  index,
+  onChange,
+  avatarPreviewUrl,
+  higgsfieldDefaultMode = 'photodump',
+}: ShotPlanCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [showEnPrompt, setShowEnPrompt] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showHiggsfieldOverride, setShowHiggsfieldOverride] = useState(false);
   // Local model state — PlannedShot doesn't carry model, but we expose UI for it.
   const [model, setModel] = useState<BrollModelId>('higgsfield');
-  const [higgsfieldMode, setHiggsfieldMode] = useState<HiggsfieldMode>('photodump');
+  const [higgsfieldMode, setHiggsfieldMode] = useState<HiggsfieldMode>(higgsfieldDefaultMode);
 
   const patch = (p: Partial<PlannedShot>) => onChange({ ...shot, ...p });
 
@@ -168,22 +176,33 @@ export function ShotPlanCard({ shot, index, onChange, avatarPreviewUrl }: ShotPl
                   </select>
                 </div>
                 {model === 'higgsfield' && shot.type !== 'avatar' && (
-                  <div>
-                    <label className="label">Higgsfield mode</label>
-                    <select
-                      className="input"
-                      value={higgsfieldMode}
-                      onChange={(e) => setHiggsfieldMode(e.target.value as HiggsfieldMode)}
-                      title={HIGGSFIELD_MODE_TOOLTIPS[higgsfieldMode]}
-                      data-testid={`higgsfield-mode-${index}`}
+                  <div className="sm:col-span-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowHiggsfieldOverride((v) => !v)}
+                      className="text-xs text-ink-500 hover:text-white"
                     >
-                      {HIGGSFIELD_MODES.map((m) => (
-                        <option key={m} value={m} title={HIGGSFIELD_MODE_TOOLTIPS[m]}>
-                          {m}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-[10px] text-ink-500 mt-1">{HIGGSFIELD_MODE_TOOLTIPS[higgsfieldMode]}</p>
+                      {showHiggsfieldOverride ? '▾' : '‹'} Override Higgsfield mode (default: {higgsfieldDefaultMode})
+                    </button>
+                    {showHiggsfieldOverride && (
+                      <div className="mt-2">
+                        <label className="label">Higgsfield mode</label>
+                        <select
+                          className="input"
+                          value={higgsfieldMode}
+                          onChange={(e) => setHiggsfieldMode(e.target.value as HiggsfieldMode)}
+                          title={HIGGSFIELD_MODE_TOOLTIPS[higgsfieldMode]}
+                          data-testid={`higgsfield-mode-${index}`}
+                        >
+                          {HIGGSFIELD_MODES.map((m) => (
+                            <option key={m} value={m} title={HIGGSFIELD_MODE_TOOLTIPS[m]}>
+                              {m}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-[10px] text-ink-500 mt-1">{HIGGSFIELD_MODE_TOOLTIPS[higgsfieldMode]}</p>
+                      </div>
+                    )}
                   </div>
                 )}
                 <div className="sm:col-span-2">

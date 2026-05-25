@@ -7,11 +7,15 @@ import { CAPTION_STYLES } from '@/lib/composition/caption-styles';
 import type { WritePayload } from './WriteStep';
 import { ShotPlanCard } from './ShotPlanCard';
 import CaptionStylePicker from '@/components/wizard/CaptionStylePicker';
+import BrandOverride from '@/components/BrandOverride';
+import type { BrandPack, HiggsfieldMode } from '@/lib/types';
 
 export interface PlanStepProps {
   writePayload: WritePayload;
   onConfirm: (plan: ShotPlan) => void;
   onBack: () => void;
+  brandOverride?: Partial<BrandPack> | null;
+  onBrandOverrideChange?: (next: Partial<BrandPack> | null) => void;
 }
 
 const DEFAULT_NEW_SHOT: PlannedShot = {
@@ -23,11 +27,35 @@ const DEFAULT_NEW_SHOT: PlannedShot = {
   caption_style: 'pill-karaoke',
 };
 
-export function PlanStep({ writePayload, onConfirm, onBack }: PlanStepProps) {
+export function PlanStep({
+  writePayload,
+  onConfirm,
+  onBack,
+  brandOverride = null,
+  onBrandOverrideChange,
+}: PlanStepProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editablePlan, setEditablePlan] = useState<ShotPlan | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | undefined>(undefined);
+  const [higgsfieldDefaultMode, setHiggsfieldDefaultMode] = useState<HiggsfieldMode>('photodump');
+  const [localBrandOverride, setLocalBrandOverride] = useState<Partial<BrandPack> | null>(
+    brandOverride,
+  );
+
+  useEffect(() => {
+    void fetch('/api/settings')
+      .then((r) => r.json() as Promise<{ higgsfield_mode_default?: HiggsfieldMode }>)
+      .then((s) => {
+        if (s.higgsfield_mode_default) setHiggsfieldDefaultMode(s.higgsfield_mode_default);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleBrandChange = (next: Partial<BrandPack> | null) => {
+    setLocalBrandOverride(next);
+    onBrandOverrideChange?.(next);
+  };
 
   const fetchPlan = useCallback(async () => {
     setLoading(true);
@@ -171,9 +199,14 @@ export function PlanStep({ writePayload, onConfirm, onBack }: PlanStepProps) {
             index={idx}
             onChange={(next) => updateShot(idx, next)}
             avatarPreviewUrl={avatarPreview}
+            higgsfieldDefaultMode={higgsfieldDefaultMode}
           />
         ))}
       </div>
+
+      <section className="card !p-4" data-testid="brand-override-section">
+        <BrandOverride value={localBrandOverride} onChange={handleBrandChange} />
+      </section>
 
       <section
         className="card !p-4 space-y-3"

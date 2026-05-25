@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AvatarPicker } from '@/components/AvatarPicker';
 import { VoicePicker, type VoiceMode } from '@/components/VoicePicker';
-import { TemplatePicker } from '@/components/generate-v2/TemplatePicker';
 import type { CachedAvatar } from '@/lib/db/repos/avatars-cache';
 import type { Preset } from '@/lib/presets';
 
@@ -28,6 +27,8 @@ const PLACEHOLDERS = [
   'Pegá tu guion completo o describí en una línea el video que querés…',
 ];
 
+const SECTION_LABEL = 'text-sm font-medium text-ink-300 mb-3';
+
 function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
@@ -45,8 +46,7 @@ export function WriteStep({ initialGuion = '', onSubmit }: WriteStepProps) {
   const [voiceMode, setVoiceMode] = useState<VoiceMode>('native');
   const [customVoiceId, setCustomVoiceId] = useState<string | null>(null);
   const [showVoicePicker, setShowVoicePicker] = useState(false);
-  const [entryMode, setEntryMode] = useState<'scratch' | 'template'>('scratch');
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const templatesRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     void fetch('/api/heygen/avatars')
@@ -59,8 +59,6 @@ export function WriteStep({ initialGuion = '', onSubmit }: WriteStepProps) {
         if (s.voice_mode === 'native' || s.voice_mode === 'custom') setVoiceMode(s.voice_mode);
       })
       .catch(() => {});
-    // Custom voice id is set in Settings; we just show "Configurá en Settings"
-    // when missing — VoicePicker handles the link.
     setCustomVoiceId(null);
   }, []);
 
@@ -83,6 +81,18 @@ export function WriteStep({ initialGuion = '', onSubmit }: WriteStepProps) {
       .catch(() => setPresets([]))
       .finally(() => setPresetsLoading(false));
   }, [showTemplates, presets.length]);
+
+  // Close the presets dropdown on outside click.
+  useEffect(() => {
+    if (!showTemplates) return;
+    const handler = (e: MouseEvent) => {
+      if (templatesRef.current && !templatesRef.current.contains(e.target as Node)) {
+        setShowTemplates(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showTemplates]);
 
   const applyPreset = (p: Preset) => {
     if (p.hint_prompt_template) setText(p.hint_prompt_template);
@@ -110,182 +120,144 @@ export function WriteStep({ initialGuion = '', onSubmit }: WriteStepProps) {
     setForceMode(detected === 'brief' ? 'guion' : 'brief');
   };
 
-  const handleTemplateSubmit = async (templateId: string, variables: Record<string, string>) => {
-    // Skip the AI planner — templates render directly via HeyGen.
-    // For now we POST to the existing generate route with a special marker so
-    // the backend can route to /v2/template/{id}/generate. Full wiring will
-    // land alongside the template-render pipeline branch in v0.4.
-    await fetch('/api/heygen/template-generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ template_id: templateId, variables }),
-    }).catch(() => {
-      // Endpoint may not exist yet — surface a friendly UI message instead.
-      // This intentionally fails silently to keep the picker shippable now.
-    });
-  };
-
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Nuevo video</h1>
 
-      <div className="flex gap-2 border-b border-ink-800">
-        <button
-          type="button"
-          onClick={() => setEntryMode('scratch')}
-          className={`px-4 py-2 text-sm border-b-2 -mb-px ${
-            entryMode === 'scratch'
-              ? 'border-accent-400 text-white'
-              : 'border-transparent text-ink-500 hover:text-white'
-          }`}
-          data-testid="entry-mode-scratch"
-        >
-          Empezar de cero
-        </button>
-        <button
-          type="button"
-          onClick={() => setEntryMode('template')}
-          className={`px-4 py-2 text-sm border-b-2 -mb-px ${
-            entryMode === 'template'
-              ? 'border-accent-400 text-white'
-              : 'border-transparent text-ink-500 hover:text-white'
-          }`}
-          data-testid="entry-mode-template"
-        >
-          Usar template HeyGen
-        </button>
-      </div>
+      <div className="card space-y-8">
+        {/* Section 1 — TEXT */}
+        <section>
+          <label className={SECTION_LABEL} htmlFor="write-textarea">
+            Tu guion o brief
+          </label>
+          <div className="relative">
+            <textarea
+              id="write-textarea"
+              className="input min-h-[250px] resize-y"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={PLACEHOLDERS[placeholderIdx]}
+              data-testid="write-textarea"
+            />
+            {text.trim().length > 0 && (
+              <button
+                type="button"
+                onClick={togglePill}
+                className={`absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full border ${
+                  detected === 'guion'
+                    ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                    : 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                }`}
+                title="Click para forzar el otro modo"
+                data-testid="detect-pill"
+              >
+                {detected === 'guion' ? 'Guion' : 'Brief'}
+              </button>
+            )}
+          </div>
+        </section>
 
-      {entryMode === 'template' && (
-        <div className="card">
-          <TemplatePicker
-            selectedId={selectedTemplateId}
-            onChange={setSelectedTemplateId}
-            onSubmit={(id, vars) => void handleTemplateSubmit(id, vars)}
-          />
-        </div>
-      )}
+        {/* Section 2 — AVATAR */}
+        <section className="border-t border-ink-800 pt-6">
+          <label className={SECTION_LABEL}>Elegí tu avatar</label>
+          <AvatarPicker selected={avatarId} onChange={(id) => setAvatarId(id)} allowNone />
 
-      {entryMode === 'scratch' && (
-      <>
-      <div className="card space-y-4">
-        <div className="relative">
-          <textarea
-            className="input min-h-[300px] resize-y"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder={PLACEHOLDERS[placeholderIdx]}
-            data-testid="write-textarea"
-          />
-          {text.trim().length > 0 && (
-            <button
-              type="button"
-              onClick={togglePill}
-              className={detected === 'guion' ? 'pill-success' : 'pill-warning'}
-              style={{ position: 'absolute', top: 12, right: 12 }}
-              title="Click para forzar el otro modo"
-              data-testid="detect-pill"
-            >
-              {detected === 'guion' ? 'Guion detectado' : 'Brief detectado'}
-            </button>
-          )}
-        </div>
-
-        <div>
-          <button
-            type="button"
-            className="text-xs text-ink-500 hover:text-white"
-            onClick={() => setShowTemplates((v) => !v)}
-          >
-            {showTemplates ? '▾' : '‹'} Plantillas
-          </button>
-          {showTemplates && (
-            <div className="mt-2 p-3 rounded-lg bg-ink-950 border border-ink-800">
-              {presetsLoading && <p className="text-xs text-ink-500">Cargando plantillas…</p>}
-              {!presetsLoading && presets.length === 0 && (
-                <p className="text-xs text-ink-500">No hay plantillas disponibles.</p>
-              )}
-              {!presetsLoading && presets.length > 0 && (
-                <ul className="space-y-1">
-                  {presets.map((p) => (
-                    <li key={p.id}>
-                      <button
-                        type="button"
-                        onClick={() => applyPreset(p)}
-                        className="w-full text-left px-2 py-1.5 rounded hover:bg-ink-800 text-xs"
-                        data-testid={`preset-${p.id}`}
-                      >
-                        <div className="font-medium text-white">{p.label}</div>
-                        {p.description && <div className="text-ink-500 mt-0.5">{p.description}</div>}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+          {selectedAvatar && (
+            <div className="mt-3 flex items-center gap-2 text-xs text-ink-400">
+              <span>
+                Voz:{' '}
+                <span className="text-white">
+                  {voiceMode === 'native' && selectedAvatar.default_voice_id
+                    ? `nativa del avatar (${selectedAvatar.default_voice_name ?? 'sin nombre'})`
+                    : 'clonada (ElevenLabs)'}
+                </span>
+              </span>
+              <button
+                type="button"
+                className="text-accent-400 hover:underline"
+                onClick={() => setShowVoicePicker((v) => !v)}
+              >
+                {showVoicePicker ? 'ocultar' : 'editar'}
+              </button>
             </div>
           )}
-        </div>
-      </div>
 
-      <div className="card space-y-2">
-        <label className="label">Formato</label>
-        <div className="flex flex-wrap gap-2">
-          {(['9:16', '16:9', '1:1'] as WriteFormat[]).map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setFormat(f)}
-              className={
-                format === f
-                  ? 'btn-primary !py-1.5 !text-xs'
-                  : 'btn-secondary !py-1.5 !text-xs'
-              }
-              data-testid={`format-${f}`}
-            >
-              {f === '9:16' ? '9:16 (Reel)' : f === '16:9' ? '16:9 (YouTube)' : '1:1 (Feed)'}
-            </button>
-          ))}
-        </div>
-      </div>
+          {showVoicePicker && selectedAvatar && (
+            <div className="mt-3">
+              <VoicePicker
+                selectedAvatar={selectedAvatar}
+                selectedVoiceMode={voiceMode}
+                customVoiceId={customVoiceId}
+                onChange={(mode) => {
+                  setVoiceMode(mode);
+                  void fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ voice_mode: mode }),
+                  });
+                }}
+              />
+            </div>
+          )}
+        </section>
 
-      <div className="card space-y-3">
-        <label className="label">Avatar</label>
-        <AvatarPicker selected={avatarId} onChange={(id) => setAvatarId(id)} allowNone />
-
-        {selectedAvatar && (
-          <div className="flex items-center gap-2 text-xs">
-            <span className={voiceMode === 'native' && selectedAvatar.default_voice_id ? 'pill-success' : 'pill-warning'}>
-              Voz: {voiceMode === 'native' && selectedAvatar.default_voice_id
-                ? `nativa del avatar (${selectedAvatar.default_voice_name ?? 'sin nombre'})`
-                : 'clonada (ElevenLabs)'}
-            </span>
-            <button
-              type="button"
-              className="text-accent-400 hover:underline"
-              onClick={() => setShowVoicePicker((v) => !v)}
-            >
-              {showVoicePicker ? 'ocultar' : 'editar'}
-            </button>
+        {/* Section 3 — TOOLBAR (format + plantillas) */}
+        <section className="border-t border-ink-800 pt-6 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-ink-500 mr-1">Formato</span>
+            {(['9:16', '16:9', '1:1'] as WriteFormat[]).map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setFormat(f)}
+                className={`pill ${format === f ? '!bg-accent-500 !text-white !border-accent-500' : ''}`}
+                data-testid={`format-${f}`}
+              >
+                {f}
+              </button>
+            ))}
           </div>
-        )}
 
-        {showVoicePicker && selectedAvatar && (
-          <VoicePicker
-            selectedAvatar={selectedAvatar}
-            selectedVoiceMode={voiceMode}
-            customVoiceId={customVoiceId}
-            onChange={(mode) => {
-              setVoiceMode(mode);
-              void fetch('/api/settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ voice_mode: mode }),
-              });
-            }}
-          />
-        )}
+          <div className="relative" ref={templatesRef}>
+            <button
+              type="button"
+              className="text-xs text-ink-500 hover:text-white"
+              onClick={() => setShowTemplates((v) => !v)}
+            >
+              {showTemplates ? '▾' : '‹'} Plantillas
+            </button>
+            {showTemplates && (
+              <div className="absolute right-0 mt-2 w-72 p-3 rounded-lg bg-ink-950 border border-ink-800 z-20 shadow-xl">
+                {presetsLoading && <p className="text-xs text-ink-500">Cargando plantillas…</p>}
+                {!presetsLoading && presets.length === 0 && (
+                  <p className="text-xs text-ink-500">No hay plantillas disponibles.</p>
+                )}
+                {!presetsLoading && presets.length > 0 && (
+                  <ul className="space-y-1 max-h-72 overflow-y-auto">
+                    {presets.map((p) => (
+                      <li key={p.id}>
+                        <button
+                          type="button"
+                          onClick={() => applyPreset(p)}
+                          className="w-full text-left px-2 py-1.5 rounded hover:bg-ink-800 text-xs"
+                          data-testid={`preset-${p.id}`}
+                        >
+                          <div className="font-medium text-white">{p.label}</div>
+                          {p.description && (
+                            <div className="text-ink-500 mt-0.5">{p.description}</div>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
       </div>
 
+      {/* Section 4 — CTA */}
       <div className="flex justify-end">
         <button
           type="button"
@@ -297,8 +269,6 @@ export function WriteStep({ initialGuion = '', onSubmit }: WriteStepProps) {
           Planear video →
         </button>
       </div>
-      </>
-      )}
     </div>
   );
 }

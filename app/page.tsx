@@ -99,8 +99,9 @@ export default async function DashboardPage() {
         </section>
       </div>
 
-      <section className="grid grid-cols-3 gap-4">
+      <section className="grid grid-cols-4 gap-4">
         <QuickAction href="/generate" title="Generar video" desc="Idea → MP4 en minutos" emoji="✨" disabled={!status.complete} />
+        <QuickAction href="/templates" title="Templates HeyGen" desc="Generá desde un template" emoji="🧩" />
         <QuickAction href="/library" title="Library" desc={`${jobs.length} videos guardados`} emoji="📂" />
         <QuickAction href="/setup" title="Configuración" desc="Keys, character, brand" emoji="⚙️" />
       </section>

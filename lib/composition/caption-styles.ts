@@ -70,6 +70,24 @@ export const CAPTION_STYLES: CaptionStyleMeta[] = [
 
 export const CAPTION_STYLE_IDS = CAPTION_STYLES.map((s) => s.id) as [CaptionStyleId, ...CaptionStyleId[]];
 
+/**
+ * Primary (curated) caption styles always visible in the picker.
+ * The other 13 stay in {@link CAPTION_STYLES} but live behind a "Más estilos" modal.
+ */
+export const PRIMARY_CAPTION_STYLES = [
+  'pill-karaoke',
+  'kinetic-slam',
+  'highlight',
+  'gradient-fill',
+  'neon-glow',
+] as const satisfies readonly CaptionStyleId[];
+
+export type PrimaryCaptionStyleId = (typeof PRIMARY_CAPTION_STYLES)[number];
+
+export function isPrimaryCaptionStyle(id: CaptionStyleId): id is PrimaryCaptionStyleId {
+  return (PRIMARY_CAPTION_STYLES as readonly CaptionStyleId[]).includes(id);
+}
+
 import { z } from 'zod';
 export const CaptionStyleIdSchema = z.enum(CAPTION_STYLE_IDS);
 
